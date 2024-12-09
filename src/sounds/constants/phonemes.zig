@@ -1,7 +1,62 @@
+const Feature = @import("../features.zig").Feature;
 //syllabic,stress,long,consonantal,sonorant,continuant,delayed_release,approximant,tap,trill,nasal,voice,spread_gl,constr_gl,LABIAL,round,labiodental,CORONAL,anterior,distributed,strident,lateral,DORSAL,high,low,front,back,tense
-const FeatureTableType = struct { snd: [:0]const u8, ftrTbl: [24]u8 };
+const FeatureTableType = struct { snd: [:0]const u8, ftrTbl: *const [28:0]u8 };
 
-const featureTable = [_]FeatureTableType{
+fn getFeature(i: comptime_int) Feature {
+    return switch (i) {
+        0 => Feature.syllabic,
+        1 => Feature.stress,
+        2 => Feature.long,
+        3 => Feature.consonantal,
+        4 => Feature.sonorant,
+        5 => Feature.continuant,
+        6 => Feature.delayed_release,
+        7 => Feature.approximant,
+        8 => Feature.tap,
+        9 => Feature.trill,
+        10 => Feature.nasal,
+        11 => Feature.voice,
+        12 => Feature.spread_glottis,
+        13 => Feature.constricted_glottis,
+        14 => Feature.labial,
+        15 => Feature.round,
+        16 => Feature.labiodental,
+        17 => Feature.coronal,
+        18 => Feature.anterior,
+        19 => Feature.distributed,
+        20 => Feature.strident,
+        21 => Feature.lateral,
+        22 => Feature.dorsal,
+        23 => Feature.high,
+        24 => Feature.low,
+        25 => Feature.front,
+        26 => Feature.back,
+        27 => Feature.tense,
+        else => unreachable,
+    };
+}
+const Ftype = struct { p: u32, m: u32 };
+
+pub fn getPhonemes(ftt: FeatureTableType) Ftype {
+    var plusMask: u32 = 0;
+    var minusMask: u32 = 0;
+    for (ftt.ftrTbl, 0..) |fch, i| {
+        const f = getFeature(i);
+        switch (fch) {
+            '+' => {
+                plusMask |= f.mask();
+            },
+            '-' => {
+                minusMask |= f.mask();
+            },
+            '0' => {},
+            else => unreachable,
+        }
+    }
+    return Ftype{ .p = plusMask, .m = minusMask };
+}
+
+pub const featureTable = [_]FeatureTableType{
     FeatureTableType{ .snd = "ɒ", .ftrTbl = "+---++0+---+--++--000-+-+-+0" },
     FeatureTableType{ .snd = "ɑ", .ftrTbl = "+---++0+---+------000-+-+-+0" },
     FeatureTableType{ .snd = "ɶ", .ftrTbl = "+---++0+---+--++--000-+-++-0" },

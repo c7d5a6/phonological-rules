@@ -1,4 +1,4 @@
-const Feature = enum(u32) {
+pub const Feature = enum(u5) {
     //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////// MANNER FEATURES ///////////////////////////////////////////////////
@@ -120,7 +120,9 @@ const Feature = enum(u32) {
     implosive,
 
     pub fn mask(self: Feature) u32 {
-        return 1 << @intFromEnum(self);
+        var res: u32 = 1;
+        res <<= @intFromEnum(self);
+        return res;
     }
 };
 
