@@ -10,16 +10,35 @@ pub const Phoneme = struct {
     ftrs: PhFeatures,
 
     pub fn sound(self: *Phoneme, a: Allocator) [:0]const u8 {
-        if (self.orig) |s| return s;
-        self.orig = findSound(self.*);
-        return self.orig.?;
+        if (self.orig) |s| {
+            var dest = a.allocSentinel(u8, s.len, 0) catch unreachable;
+            @memcpy(dest[0..], s);
+            return dest;
+        }
+        const found = findSound(self.*, a);
+        return found;
     }
 };
 
-fn findSound(ph: Phoneme) [:0]const u8 {
+fn findSound(ph: Phoneme, a: Allocator) [:0]const u8 {
+    // var aa = Arena.init(a);
+    // defer aa.deinit();
+
     for (phonemes) |phc| {
         if (ph.ftrs.eql(phc.ftrs)) return phc.orig.?;
-        // for(
+        for (diacritics) |d| {
+            const newSet = phc.ftrs.applyChange(d.ftrs);
+            if (ph.ftrs.eql(newSet)) {
+                const phc_len = if (phc.orig) |s| s.len else 0;
+                const d_len = if (d.orig) |s| s.len else 0;
+                var sound = a.allocSentinel(u8, phc_len + d_len, 0) catch unreachable;
+                if (phc.orig) |s|
+                    @memcpy(sound[0..phc_len], s);
+                if (d.orig) |s|
+                    @memcpy(sound[phc_len..], s);
+                return sound;
+            }
+        }
     }
     unreachable;
 }
@@ -55,6 +74,16 @@ pub const PhFeatures = struct {
         self.mnsMsk &= ~f.mask();
     }
 
+    fn applyChange(self: PhFeatures, change: PhFeatures) PhFeatures {
+        var p = self.plsMsk;
+        var m = self.mnsMsk;
+        p |= change.plsMsk;
+        p &= ~change.mnsMsk;
+        m |= change.mnsMsk;
+        m &= ~change.plsMsk;
+        return PhFeatures{ .plsMsk = p, .mnsMsk = m };
+    }
+
     fn eql(self: PhFeatures, phf: PhFeatures) bool {
         return self.plsMsk == phf.plsMsk and self.mnsMsk == self.mnsMsk;
     }
@@ -64,17 +93,29 @@ pub const PhFeatures = struct {
     }
 };
 
-const phonemes: [consts.featureTable.len]Phoneme = res: {
+const phonemes: [consts.featureTable.len]Phoneme = ph_res: {
     @setEvalBranchQuota(100000);
     var phs: [consts.featureTable.len]Phoneme = undefined;
     for (consts.featureTable, 0..) |ft, i| {
         const phf = consts.getPhonemes(ft);
         phs[i] = Phoneme{ .orig = ft.snd, .ftrs = PhFeatures{ .plsMsk = phf.p, .mnsMsk = phf.m } };
     }
-    break :res phs;
+    break :ph_res phs;
+};
+
+const diacritics: [consts.diacriticTable.len]Phoneme = d_res: {
+    @setEvalBranchQuota(100000);
+    var phs: [consts.diacriticTable.len]Phoneme = undefined;
+    for (consts.diacriticTable, 0..) |ft, i| {
+        const phf = consts.getPhonemes(ft);
+        phs[i] = Phoneme{ .orig = ft.snd, .ftrs = PhFeatures{ .plsMsk = phf.p, .mnsMsk = phf.m } };
+    }
+    break :d_res phs;
 };
 
 const testing = @import("std").testing;
+const memeq = @import("std").mem.eql;
+const GeneralPA = @import("std").heap.GeneralPurposeAllocator;
 const expect = testing.expect;
 
 test "addFtr" {
@@ -113,9 +154,33 @@ test "consts" {
     for (phonemes) |ph| {
         try expect(ph.ftrs.plsMsk & ph.ftrs.mnsMsk == 0);
     }
+    print("Number of constants diacritics are {d} with size {d}\n", .{ diacritics.len, @sizeOf(Phoneme) * diacritics.len });
+    print("{any}\n", .{diacritics[0]});
+    for (diacritics) |ph| {
+        try expect(ph.ftrs.plsMsk & ph.ftrs.mnsMsk == 0);
+    }
 }
 
 test "find simple sound" {
+    var gpa = GeneralPA(.{}){};
+    const a = gpa.allocator();
+
     var ph = Phoneme{ .ftrs = PhFeatures{ .plsMsk = 68440605, .mnsMsk = 453741762 } };
-    print("Sound of mask is {s}\n", .{ph.sound()});
+    const sound = ph.sound(a);
+    try expect(memeq(u8, sound, "ɒ"));
+    const leaked = gpa.detectLeaks();
+    try expect(!leaked);
+}
+
+test "find sound" {
+    var gpa = GeneralPA(.{}){};
+    const a = gpa.allocator();
+
+    var ph = Phoneme{ .ftrs = PhFeatures{ .plsMsk = phonemes[43].ftrs.plsMsk, .mnsMsk = phonemes[43].ftrs.mnsMsk } };
+    ph.ftrs.removeFtr(Feature.voice);
+    const sound = ph.sound(a);
+    try expect(memeq(u8, sound, "n̥"));
+    a.free(sound);
+    const leaked = gpa.detectLeaks();
+    try expect(!leaked);
 }
