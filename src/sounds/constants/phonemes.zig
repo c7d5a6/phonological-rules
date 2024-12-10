@@ -1,7 +1,8 @@
 const Feature = @import("../features.zig").Feature;
-//syllabic,stress,long,consonantal,sonorant,continuant,delayed_release,approximant,tap,trill,nasal,voice,spread_gl,constr_gl,LABIAL,round,labiodental,CORONAL,anterior,distributed,strident,lateral,DORSAL,high,low,front,back,tense
+
 const FeatureTableType = struct { snd: [:0]const u8, ftrTbl: *const [28:0]u8 };
 
+//syllabic,stress,long,consonantal,sonorant,continuant,delayed_release,approximant,tap,trill,nasal,voice,spread_gl,constr_gl,LABIAL,round,labiodental,CORONAL,anterior,distributed,strident,lateral,DORSAL,high,low,front,back,tense
 fn getFeature(i: comptime_int) Feature {
     return switch (i) {
         0 => Feature.syllabic,
@@ -35,8 +36,8 @@ fn getFeature(i: comptime_int) Feature {
         else => unreachable,
     };
 }
-const Ftype = struct { p: u32, m: u32 };
 
+const Ftype = struct { p: u32, m: u32 };
 pub fn getPhonemes(ftt: FeatureTableType) Ftype {
     var plusMask: u32 = 0;
     var minusMask: u32 = 0;
