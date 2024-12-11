@@ -202,12 +202,6 @@ pub const featureTable = [_]FeatureTableType{
 };
 
 pub const diacriticTable = [_]FeatureTableType{
-    FeatureTableType{ .snd = "\u{0329}", .ftrTbl = "+000000000000000000000000000" }, //◌̩
-    FeatureTableType{ .snd = "\u{0330}", .ftrTbl = "000000000000-+00000000000000" }, //˷ • ◌̰
-    FeatureTableType{ .snd = "\u{0324}", .ftrTbl = "000000000000+-00000000000000" }, //◌̤
-    FeatureTableType{ .snd = "\u{0325}", .ftrTbl = "00000000000-0000000000000000" }, //˳ • ◌̥
-    FeatureTableType{ .snd = "\u{0320}", .ftrTbl = "000000000000000000-+00000000" }, //ˍ • ◌̠
-    FeatureTableType{ .snd = "\u{032A}", .ftrTbl = "000000000000000000++00000000" }, //◌͏̪
     //+ fronted velar
     //- backed velar
     //' stress
@@ -217,7 +211,13 @@ pub const diacriticTable = [_]FeatureTableType{
     FeatureTableType{ .snd = "\u{02B7}", .ftrTbl = "00000000000000++000000000000" }, //ʷ
     FeatureTableType{ .snd = "\u{02E0}", .ftrTbl = "0000000000000000000000++--+0" }, //ˠ
     FeatureTableType{ .snd = "\u{02E4}", .ftrTbl = "0000000000000000000000+-+-+0" }, //ˤ
-    FeatureTableType{ .snd = "\u{0303}", .ftrTbl = "0000000000+00000000000000000" }, //◌̃
     FeatureTableType{ .snd = "\u{02DE}", .ftrTbl = "00000000000000000+++-0000000" }, //˞
+    FeatureTableType{ .snd = "\u{0303}", .ftrTbl = "0000000000+00000000000000000" }, //◌̃
+    FeatureTableType{ .snd = "\u{0329}", .ftrTbl = "+000000000000000000000000000" }, //◌̩
+    FeatureTableType{ .snd = "\u{0330}", .ftrTbl = "000000000000-+00000000000000" }, //˷ • ◌̰
+    FeatureTableType{ .snd = "\u{0324}", .ftrTbl = "000000000000+-00000000000000" }, //◌̤
+    FeatureTableType{ .snd = "\u{0325}", .ftrTbl = "00000000000-0000000000000000" }, //˳ • ◌̥
+    FeatureTableType{ .snd = "\u{0320}", .ftrTbl = "000000000000000000-+00000000" }, //ˍ • ◌̠
+    FeatureTableType{ .snd = "\u{032A}", .ftrTbl = "000000000000000000++00000000" }, //◌͏̪
     // FeatureTableType{ .snd = "\u{02BC}", .ftrTbl = "000000000000-+00000000000000" }, //ʼ - The same as ~
 };
