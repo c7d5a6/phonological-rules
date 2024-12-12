@@ -17,26 +17,6 @@ pub fn phonemeSound(ph: Phoneme, a: Allocator) [:0]const u8 {
 }
 
 fn findSound(ph: Phoneme, a: Allocator) [:0]const u8 {
-    // var aa = Arena.init(a);
-    // defer aa.deinit();
-
-    // for (phonemes) |phc| {
-    //     if (ph.ftrs.eql(phc.ftrs)) return phc.orig.?;
-    //     for (diacritics) |d| {
-    //         const newSet = phc.ftrs.applyChange(d.ftrs);
-    //         if (ph.ftrs.eql(newSet)) {
-    //             const phc_len = if (phc.orig) |s| s.len else 0;
-    //             const d_len = if (d.orig) |s| s.len else 0;
-    //             var sound = a.allocSentinel(u8, phc_len + d_len, 0) catch unreachable;
-    //             if (phc.orig) |s|
-    //                 @memcpy(sound[0..phc_len], s);
-    //             if (d.orig) |s|
-    //                 @memcpy(sound[phc_len..], s);
-    //             return sound;
-    //         }
-    //     }
-    // }
-    // unreachable;
     return a_star(ph, a);
 }
 
@@ -75,43 +55,27 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
         const edge_ptr = visited.addOne() catch unreachable;
         edge_ptr.* = itm;
         const edge = edge_ptr.*;
-        print("heap  {any} \n", .{heap.peek()});
-        print("heap remove {*} \n", .{edge_ptr});
-        print("visited heap {b}/{b} with sound {s}\n", .{ edge.f.plsMsk, edge.f.mnsMsk, parseSound(&edge, "", a) });
         d_loop: for (diacritics) |d| {
-            print("{s} :d\n", .{d.orig.?});
             const next = edge.f.applyChange(d.ftrs);
             for (visited.items) |v| {
                 if (next.eql(v.f)) continue :d_loop;
             }
-            print("not visited\n", .{});
             if (next.eql(dest)) return parseSound(&edge, d.orig orelse unreachable, a);
-            print("not dest\n", .{});
             for (heap.items) |h| {
                 if (next.eql(h.f)) continue :d_loop;
             }
-            print("not in heap\n", .{});
-            print("add cost {d}\n", .{1 + edge.cost});
-            print("add edge {any}\n", .{edge});
             const new = QueueMember{ .f = next, .cost = 1 + edge.cost, .from = edge_ptr, .sound = d.orig orelse unreachable };
-            print("add new {any}\n", .{new});
             heap.add(new) catch unreachable;
-            print("*peek heap {any}\n", .{heap.peek()});
-            print("put in heap\n", .{});
         }
-        print("**** ended cycle put in heap\n", .{});
-        print("*peek heap {any}\n", .{heap.peek()});
     }
     unreachable;
 }
 
 fn parseSound(orig: ?*const QueueMember, last: [:0]const u8, a: Allocator) [:0]const u8 {
-    print("parse sound \n", .{});
     var temp = orig;
     var length = last.len;
     while (temp) |qm| {
         temp = qm.from;
-        // print("qm sound {s}\n", .{qm.sound});
         length += qm.sound.len;
     }
     var sound = a.allocSentinel(u8, length, 0) catch unreachable;
@@ -126,9 +90,45 @@ fn parseSound(orig: ?*const QueueMember, last: [:0]const u8, a: Allocator) [:0]c
         @memcpy(sound[start..end], qm.sound);
         end = start;
     }
+    // if (orig) |_| {
+    //     temp = orig;
+    //     while (temp.?.from) |from| {
+    //         temp = from;
+    //     }
+    //     const s_len = temp.?.sound.len;
+    //
+    //     for (s_len..sound.len) |j| {
+    //         for (s_len..j) |i| {
+    //             if (i == j) continue;
+    //             if (sound[i] < sound[j]) {
+    //                 const s = sound[i];
+    //                 sound[i] = sound[j];
+    //                 sound[j] = s;
+    //             }
+    //         }
+    //     }
+    // }
 
     return sound;
 }
+
+const sstype = [:0]const u8;
+const sort_sounds = [_]u8{
+    '\u{02D0}', //ː
+    '\u{02B0}', //ʰ
+    '\u{02B2}', //ʲ
+    '\u{02B7}', //ʷ
+    '\u{02E0}', //ˠ
+    '\u{02E4}', //ˤ
+    '\u{02DE}', //˞
+    '\u{0303}', //◌̃
+    '\u{0329}', //◌̩
+    '\u{0330}', //˷ • ◌̰
+    '\u{0324}', //◌̤
+    '\u{0325}', //˳ • ◌̥
+    '\u{0320}', //ˍ • ◌̠
+    '\u{032A}', //◌͏̪
+};
 
 const testing = @import("std").testing;
 const memeq = @import("std").mem.eql;
@@ -145,7 +145,7 @@ test "find simple sound" {
     const ph = Phoneme{ .ftrs = PhFeatures{ .plsMsk = 68440605, .mnsMsk = 453741762 } };
     const sound = phonemeSound(ph, a);
 
-    print("sound {s}", .{sound});
+    print("sound {s}\n", .{sound});
     try expect(memeq(u8, sound, "ɒ"));
     a.free(sound);
     const leaked = gpa.detectLeaks();
@@ -162,8 +162,27 @@ test "find sound" {
     ph.ftrs.addFtr(Feature.spread_glottis);
 
     const sound = phonemeSound(ph, a);
-    print("sound {s}", .{sound});
-    try expect(memeq(u8, sound, "n̥"));
+    print("sound {s}\n", .{sound});
+    try expect(memeq(u8, sound, "nʰ̥"));
+
+    // clean
+    a.free(sound);
+    const leaked = gpa.detectLeaks();
+    try expect(!leaked);
+}
+
+test "n - m̥" {
+    var gpa = GeneralPA(.{}){};
+    const a = gpa.allocator();
+
+    var ph = Phoneme{ .ftrs = PhFeatures{ .plsMsk = phonemes[43].ftrs.plsMsk, .mnsMsk = phonemes[43].ftrs.mnsMsk } };
+    ph.ftrs.removeFtr(Feature.voice);
+    ph.ftrs.removeFtr(Feature.coronal);
+    ph.ftrs.addFtr(Feature.labial);
+
+    const sound = phonemeSound(ph, a);
+    print("sound {s}\n", .{sound});
+    try expect(memeq(u8, sound, "m̥"));
 
     // clean
     a.free(sound);

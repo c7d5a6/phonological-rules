@@ -25,7 +25,20 @@ pub const PhFeatures = struct {
     pub fn removeFtr(self: *PhFeatures, f: Feature) void {
         self.mnsMsk |= f.mask();
         self.plsMsk &= ~f.mask();
-        // TODO: disable features?
+        switch (f) {
+            .dorsal => {
+                self.disableFtr(Feature.high);
+                self.disableFtr(Feature.low);
+                self.disableFtr(Feature.front);
+                self.disableFtr(Feature.back);
+            },
+            .coronal => {
+                self.disableFtr(Feature.anterior);
+                self.disableFtr(Feature.distributed);
+                self.disableFtr(Feature.strident);
+            },
+            else => {},
+        }
     }
 
     pub fn disableFtr(self: *PhFeatures, f: Feature) void {
