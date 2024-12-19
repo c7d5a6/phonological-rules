@@ -1,5 +1,7 @@
 const std = @import("std");
 const unicode = std.unicode;
+const util = @import("../utils/symbols.zig");
+const isWhitespace = util.isWhitespace;
 
 const SoundLexer = struct {
     source: [:0]const u8,
@@ -21,8 +23,8 @@ const SoundLexer = struct {
         const start = sl.iterator.i;
         const slice = sl.iterator.nextCodepointSlice() orelse return null;
         // const token = unicode.utf8Decode(slice);
-        if (slice.len != 0) {
-            while (sl.iterator.peek(1).len != 0) {
+        if (isWhitespace(slice)) {
+            while (isWhitespace(sl.iterator.peek(1))) {
                 _ = sl.iterator.nextCodepoint();
             }
             return SoundToken{ .type = .Whitespace, .text = sl.iterator.bytes[start..sl.iterator.i] };
@@ -45,7 +47,7 @@ const PhonemeTokenType = enum {
 };
 
 test "Test print" {
-    const source = "cʰɛm̥pa\nHello world!😊!!!\n and you!";
+    const source = "cʰɛm̥pa\nHello       world!😊!!!\n and you!";
     var lexer = SoundLexer.init(source);
     while (lexer.nextToken()) |t| {
         std.debug.print(" {s} : {any}\n", .{ t.text, t.type });

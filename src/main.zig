@@ -22,3 +22,9 @@ test "simple test" {
     try list.append(42);
     try std.testing.expectEqual(@as(i32, 42), list.pop());
 }
+
+const lexer = @import("parser/sound_lexer.zig");
+
+test "test" {
+    _ = lexer;
+}
