@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
 const phoneme = @import("phoneme.zig");
@@ -12,6 +13,7 @@ pub fn phonemeSound(ph: Phoneme, a: Allocator) [:0]const u8 {
         @memcpy(dest[0..], s);
         return dest;
     }
+    assert(!ph.unknw);
     const found = findSound(ph, a);
     return found;
 }
@@ -25,7 +27,7 @@ const QueueMember = struct {
     f: PhFeatures,
     cost: u32,
     from: ?*const QueueMember = null,
-    sound: [:0]const u8,
+    sound: []const u8,
 };
 fn queueCompare(context: QueueContext, a: QueueMember, b: QueueMember) Order {
     const a_d = a.cost + a.f.dist(context.dest);
@@ -71,7 +73,7 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     unreachable;
 }
 
-fn parseSound(orig: ?*const QueueMember, last: [:0]const u8, a: Allocator) [:0]const u8 {
+fn parseSound(orig: ?*const QueueMember, last: []const u8, a: Allocator) [:0]const u8 {
     var temp = orig;
     var length = last.len;
     while (temp) |qm| {

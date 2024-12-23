@@ -29,11 +29,28 @@ const whilespaces = [_][]const u8{
     "\u{FEFF}", //     FEFF          ; BOM                ZERO WIDTH NO_BREAK SPACE
 };
 
-pub fn isWhitespace(smb: []const u8) bool {
-    for (whilespaces) |ws| {
-        if (ws.len == smb.len and std.mem.eql(u8, ws, smb)) {
+const dcrts = @import("../sounds/phoneme.zig").diacritics;
+const diacritics: [dcrts.len][]const u8 = dr: {
+    var res: [dcrts.len][]const u8 = undefined;
+    for (&res, 0..) |*r, i| {
+        r.* = dcrts[i].orig orelse unreachable;
+    }
+    break :dr res;
+};
+
+fn isSmth(T: type, smb: []const u8, arr: T) bool {
+    for (arr) |a| {
+        if (a.len == smb.len and std.mem.eql(u8, a, smb)) {
             return true;
         }
     }
     return false;
+}
+
+pub fn isWhitespace(smb: []const u8) bool {
+    return isSmth(@TypeOf(whilespaces), smb, whilespaces);
+}
+
+pub fn isDiacritics(smb: []const u8) bool {
+    return isSmth(@TypeOf(diacritics), smb, diacritics);
 }

@@ -16,6 +16,14 @@ pub const PhFeatures = struct {
         self.mnsMsk = mask;
     }
 
+    pub fn hasP(self: PhFeatures, f: Feature) bool {
+        return 0 != self.plsMsk & f.mask();
+    }
+
+    pub fn hasM(self: PhFeatures, f: Feature) bool {
+        return 0 != self.mnsMsk & f.mask();
+    }
+
     pub fn addFtr(self: *PhFeatures, f: Feature) void {
         self.plsMsk |= f.mask();
         self.mnsMsk &= ~f.mask();

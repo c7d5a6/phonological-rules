@@ -24,7 +24,37 @@ test "simple test" {
 }
 
 const lexer = @import("parser/sound_lexer.zig");
+const phonemeSound = @import("sounds/ph_sound.zig").phonemeSound;
 
 test "test" {
     _ = lexer;
+}
+
+test "change sounds" {
+    const in = "namodatiei aɳd gʰ'eːwHeti";
+    std.debug.print("Converted: {s}\n", .{in});
+    std.debug.print("     into: ", .{});
+
+    var lxr = lexer.SoundLexer.init(in);
+
+    while (try lxr.nextToken()) |t| {
+        switch (t.type) {
+            .Whitespace => std.debug.print(" ", .{}),
+            .Diacritic => std.debug.print("*", .{}),
+            .Phoneme => {
+                var nPh = t.ph.?.copy();
+                if (nPh.ftrs.hasM(.syllabic)) {
+                    nPh.ftrs.removeFtr(.voice);
+                    nPh.ftrs.removeFtr(.coronal);
+                    nPh.ftrs.addFtr(.labial);
+                } else {
+                    nPh.ftrs.removeFtr(.front);
+                }
+                const sound = phonemeSound(nPh, std.testing.allocator);
+                std.debug.print("{s}", .{sound});
+                std.testing.allocator.free(sound);
+            },
+        }
+    }
+    std.debug.print("\n\n\n", .{});
 }

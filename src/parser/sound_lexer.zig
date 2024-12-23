@@ -2,8 +2,13 @@ const std = @import("std");
 const unicode = std.unicode;
 const util = @import("../utils/symbols.zig");
 const isWhitespace = util.isWhitespace;
+const isDiacritics = util.isDiacritics;
+const Phoneme = @import("../sounds/phoneme.zig").Phoneme;
+const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 
-const SoundLexer = struct {
+const LexerError = error{WrongPlaceForDiacritic};
+
+pub const SoundLexer = struct {
     source: [:0]const u8,
     curPos: u32,
     iterator: unicode.Utf8Iterator,
@@ -19,7 +24,7 @@ const SoundLexer = struct {
         };
     }
 
-    pub fn nextToken(sl: *Self) ?SoundToken {
+    pub fn nextToken(sl: *Self) LexerError!?SoundToken {
         const start = sl.iterator.i;
         const slice = sl.iterator.nextCodepointSlice() orelse return null;
         // const token = unicode.utf8Decode(slice);
@@ -29,40 +34,39 @@ const SoundLexer = struct {
             }
             return SoundToken{ .type = .Whitespace, .text = sl.iterator.bytes[start..sl.iterator.i] };
         }
+        if (isDiacritics(slice)) {
+            return error.WrongPlaceForDiacritic;
+        }
 
-        return SoundToken{ .text = slice, .type = .Phoneme };
+        var ph = Phoneme{ .ftrs = PhFeatures{} };
+        ph.setPhSound(slice);
+        while (isDiacritics(sl.iterator.peek(1))) {
+            const d_slice = sl.iterator.nextCodepointSlice().?;
+            ph.setSoundWithDiacritic(sl.iterator.bytes[start..sl.iterator.i], d_slice);
+        }
+
+        return SoundToken{ .text = slice, .type = .Phoneme, .ph = ph };
     }
 };
 
 const SoundToken = struct {
     type: PhonemeTokenType,
     text: []const u8,
+    ph: ?Phoneme = null,
 };
 
 const PhonemeTokenType = enum {
-    End,
     Phoneme,
     Diacritic,
     Whitespace,
 };
 
 test "Test print" {
-    const source = "cʰɛm̥pa\nHello       world!😊!!!\n and you!";
+    const source = "cʰɛm̥";
     var lexer = SoundLexer.init(source);
-    while (lexer.nextToken()) |t| {
-        std.debug.print(" {s} : {any}\n", .{ t.text, t.type });
+    while (try lexer.nextToken()) |t| {
+        std.debug.print(" {s} : {any}, {any}\n", .{ t.text, t.type, t.ph });
     }
-}
-
-test "test" {
-    const view = unicode.Utf8View.init("Hello") catch unreachable;
-    var iterator = view.iterator();
-    std.debug.print(" len : {d}\n", .{"\u{FEFF}".len});
-
-    std.debug.print(" {s}\n", .{iterator.peek(0)});
-    std.debug.print(" {s}\n", .{iterator.peek(1)});
-    std.debug.print(" {s}\n", .{iterator.peek(2)});
-    std.debug.print(" {s}\n", .{iterator.peek(3)});
 }
 
 // class PhonemeLexer extends Lexer<PhonemeToken, PhonemeTokenType> {
