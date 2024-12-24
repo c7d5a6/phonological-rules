@@ -24,10 +24,15 @@ test "simple test" {
 }
 
 const lexer = @import("parser/sound_lexer.zig");
+const matcher = @import("matchers/matcher.zig");
 const phonemeSound = @import("sounds/ph_sound.zig").phonemeSound;
 
 test "test" {
     _ = lexer;
+}
+
+test "matcher" {
+    _ = matcher;
 }
 
 test "change sounds" {

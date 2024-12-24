@@ -49,7 +49,7 @@ pub const SoundLexer = struct {
     }
 };
 
-const SoundToken = struct {
+pub const SoundToken = struct {
     type: PhonemeTokenType,
     text: []const u8,
     ph: ?Phoneme = null,

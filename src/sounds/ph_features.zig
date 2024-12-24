@@ -71,6 +71,10 @@ pub const PhFeatures = struct {
     pub fn dist(self: PhFeatures, phf: PhFeatures) u32 {
         return bitCnt(self.plsMsk ^ phf.plsMsk) + bitCnt(self.mnsMsk ^ phf.mnsMsk);
     }
+
+    pub fn contain(self: PhFeatures, phf: PhFeatures) bool {
+        return ((self.plsMsk & phf.plsMsk) == phf.plsMsk) and ((self.mnsMsk & phf.mnsMsk) == phf.mnsMsk);
+    }
 };
 
 const testing = @import("std").testing;
