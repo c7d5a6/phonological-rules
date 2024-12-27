@@ -5,8 +5,7 @@ const isWhitespace = util.isWhitespace;
 const isDiacritics = util.isDiacritics;
 const Phoneme = @import("../sounds/phoneme.zig").Phoneme;
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
-
-const LexerError = error{WrongPlaceForDiacritic};
+const LexerError = @import("lexer_errors.zig").LexerError;
 
 pub const SoundLexer = struct {
     source: [:0]const u8,

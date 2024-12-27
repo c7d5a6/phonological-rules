@@ -23,43 +23,44 @@ test "simple test" {
     try std.testing.expectEqual(@as(i32, 42), list.pop());
 }
 
-const lexer = @import("parser/sound_lexer.zig");
+const slexer = @import("parser/sound_lexer.zig");
+const mlexer = @import("parser/match_lexer.zig");
 const matcher = @import("matchers/matcher.zig");
 const phonemeSound = @import("sounds/ph_sound.zig").phonemeSound;
 
 test "test" {
-    _ = lexer;
+    _ = mlexer;
 }
 
 test "matcher" {
     _ = matcher;
 }
 
-test "change sounds" {
-    const in = "namodatiei aɳd gʰ'eːwHeti";
-    std.debug.print("Converted: {s}\n", .{in});
-    std.debug.print("     into: ", .{});
-
-    var lxr = lexer.SoundLexer.init(in);
-
-    while (try lxr.nextToken()) |t| {
-        switch (t.type) {
-            .Whitespace => std.debug.print(" ", .{}),
-            .Diacritic => std.debug.print("*", .{}),
-            .Phoneme => {
-                var nPh = t.ph.?.copy();
-                if (nPh.ftrs.hasM(.syllabic)) {
-                    nPh.ftrs.removeFtr(.voice);
-                    nPh.ftrs.removeFtr(.coronal);
-                    nPh.ftrs.addFtr(.labial);
-                } else {
-                    nPh.ftrs.removeFtr(.front);
-                }
-                const sound = phonemeSound(nPh, std.testing.allocator);
-                std.debug.print("{s}", .{sound});
-                std.testing.allocator.free(sound);
-            },
-        }
-    }
-    std.debug.print("\n\n\n", .{});
-}
+// test "change sounds" {
+//     const in = "namodatiei aɳd gʰ'eːwHeti";
+//     std.debug.print("Converted: {s}\n", .{in});
+//     std.debug.print("     into: ", .{});
+//
+//     var lxr = lexer.SoundLexer.init(in);
+//
+//     while (try lxr.nextToken()) |t| {
+//         switch (t.type) {
+//             .Whitespace => std.debug.print(" ", .{}),
+//             .Diacritic => std.debug.print("*", .{}),
+//             .Phoneme => {
+//                 var nPh = t.ph.?.copy();
+//                 if (nPh.ftrs.hasM(.syllabic)) {
+//                     nPh.ftrs.removeFtr(.voice);
+//                     nPh.ftrs.removeFtr(.coronal);
+//                     nPh.ftrs.addFtr(.labial);
+//                 } else {
+//                     nPh.ftrs.removeFtr(.front);
+//                 }
+//                 const sound = phonemeSound(nPh, std.testing.allocator);
+//                 std.debug.print("{s}", .{sound});
+//                 std.testing.allocator.free(sound);
+//             },
+//         }
+//     }
+//     std.debug.print("\n\n\n", .{});
+// }

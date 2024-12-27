@@ -1,3 +1,5 @@
+const std = @import("std");
+
 pub const Feature = enum(u5) {
     //
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +127,37 @@ pub const Feature = enum(u5) {
         return res;
     }
 };
-
+//
 // enum Notation {
 //   place,
 // }
+
+const FeatureName = struct {
+    name: [:0]const u8,
+    f: Feature,
+};
+const f_len = @typeInfo(Feature).Enum.fields.len;
+fn sortFLen(_: void, l: FeatureName, r: FeatureName) bool {
+    return l.name.len > r.name.len;
+}
+pub const features: [f_len]FeatureName = frs: {
+    var result: [f_len]FeatureName = undefined;
+    var i = 0;
+    while (i < f_len) {
+        const f: Feature = @enumFromInt(i);
+        result[i] = FeatureName{ .name = @tagName(f), .f = f };
+        i += 1;
+    }
+    std.mem.sort(FeatureName, &result, {}, sortFLen);
+
+    break :frs result;
+};
+
+// test "features" {
+//     std.debug.print("Features: \n", .{});
+//     for (features) |f| {
+//         std.debug.print("\t{s}\n", .{f.name});
+//     }
+// }
+//
+//
