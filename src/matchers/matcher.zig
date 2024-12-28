@@ -9,7 +9,7 @@ const PatternTokenType = enum {
     Mask,
 };
 
-fn find_match(source: []const SoundToken, from: u64, pattern: []const PatternToken) ?u64 {
+pub fn find_match(source: []const SoundToken, from: u64, pattern: []const PatternToken) ?u64 {
     var m = from;
 
     while (m + pattern.len <= source.len) {

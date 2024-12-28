@@ -48,6 +48,14 @@ pub const Phoneme = struct {
             .unknw = ph.unknw,
         };
     }
+
+    pub fn applyChanges(ph: Self, change: PhFeatures) Self {
+        return Self{
+            .orig = if (ph.unknw) ph.orig else null,
+            .ftrs = ph.ftrs.applyChange(change),
+            .unknw = ph.unknw,
+        };
+    }
 };
 
 pub const phonemes: [consts.featureTable.len]Phoneme = ph_res: {

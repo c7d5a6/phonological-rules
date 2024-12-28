@@ -6,6 +6,23 @@ const phoneme = @import("phoneme.zig");
 const Phoneme = phoneme.Phoneme;
 const phonemes = phoneme.phonemes;
 const diacritics = phoneme.diacritics;
+const SoundToken = @import("../parser/sound_lexer.zig").SoundToken;
+
+const SoundErrors = error{
+    UnknownSoundToken,
+};
+
+pub fn getSound(st: SoundToken, a: Allocator) ![:0]const u8 {
+    switch (st.type) {
+        .Whitespace => {
+            var result = try a.allocSentinel(u8, 1, 0);
+            result[0] = " "[0];
+            return result;
+        },
+        .Phoneme => return phonemeSound(st.ph.?, a),
+        else => return error.UnknownSoundToken,
+    }
+}
 
 pub fn phonemeSound(ph: Phoneme, a: Allocator) [:0]const u8 {
     if (ph.orig) |s| {
