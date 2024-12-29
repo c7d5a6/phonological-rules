@@ -23,6 +23,7 @@ pub fn find_match(source: []const SoundToken, from: u64, pattern: []const Patter
                     if (!source[m + i].ph.?.ftrs.contain(pattern[i].mask.?))
                         break;
                 },
+                .TransitionToChangeSet => unreachable,
             }
             i += 1;
         }

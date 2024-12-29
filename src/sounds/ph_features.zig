@@ -1,6 +1,9 @@
+const std = @import("std");
 const Feature = @import("features.zig").Feature;
+const features = @import("features.zig").features;
 const assert = @import("std").debug.assert;
 const bitCnt = @import("./utils/bits.zig").bitCnt;
+const SoundLexer = @import("../parser/sound_lexer.zig").SoundLexer;
 
 pub const PhFeatures = struct {
     plsMsk: u32 = 0,
@@ -77,6 +80,35 @@ pub const PhFeatures = struct {
     }
 };
 
+const StrArray = std.ArrayList(u8);
+pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
+    var lexer = SoundLexer.init(input);
+    var result = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
+    while (try lexer.nextToken()) |t| {
+        if (t.type == .Phoneme) {
+            result.plsMsk = result.plsMsk & t.ph.?.ftrs.plsMsk;
+            result.mnsMsk = result.mnsMsk & t.ph.?.ftrs.mnsMsk;
+        }
+    }
+    var out = StrArray.init(a);
+    var i: u64 = 0;
+    while (i < features.len) {
+        const f: Feature = @enumFromInt(i);
+        var has = false;
+        if (result.hasP(f)) {
+            try out.appendSlice(if (out.items.len == 0) "+" else " +");
+            has = true;
+        }
+        if (result.hasM(f)) {
+            try out.appendSlice(if (out.items.len == 0) "-" else " -");
+            has = true;
+        }
+        if (has) try out.appendSlice(@tagName(f));
+        i += 1;
+    }
+    return out;
+}
+
 const testing = @import("std").testing;
 // const memeq = @import("std").mem.eql;
 // const GeneralPA = @import("std").heap.GeneralPurposeAllocator;
@@ -109,4 +141,11 @@ test "distance" {
     const phf2 = PhFeatures{ .plsMsk = 0b1000, .mnsMsk = 0b0100 };
     try expect(phf1.dist(phf1) == 0);
     try expect(phf1.dist(phf2) == 2);
+}
+
+test "comonFeatures" {
+    const out = try commonFeatures(std.testing.allocator, "kszt");
+    defer out.deinit();
+
+    std.debug.print("Common Features: {s}\n", .{out.items});
 }

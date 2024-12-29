@@ -27,7 +27,7 @@ const slexer = @import("parser/sound_lexer.zig");
 const mlexer = @import("parser/match_lexer.zig");
 const matcher = @import("matchers/matcher.zig");
 const phonemeSound = @import("sounds/ph_sound.zig").phonemeSound;
-const rule = @import("matchers/%rule.zig");
+const rule = @import("matchers/rule.zig");
 
 // test "test" {
 //     _ = mlexer;

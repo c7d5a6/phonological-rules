@@ -10,9 +10,8 @@ const Phoneme = @import("../sounds/phoneme.zig").Phoneme;
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const LexerError = @import("lexer_errors.zig").LexerError;
 
-const PatternTokenType = enum {
+const ChangeTokenType = enum {
     Whitespace,
-    TransitionToChangeSet,
     End,
     Mask,
 };
@@ -21,12 +20,12 @@ const Mod = enum {
     minus,
 };
 
-pub const PatternToken = struct {
-    type: PatternTokenType,
+pub const ChangeToken = struct {
+    type: ChangeTokenType,
     mask: ?PhFeatures = null,
 };
 
-pub const MatchLexer = struct {
+pub const ChangeLexer = struct {
     source: []const u8,
     curPos: u32,
     iterator: unicode.Utf8Iterator,
@@ -48,21 +47,21 @@ pub const MatchLexer = struct {
         }
     }
 
-    pub fn nextToken(ml: *Self) LexerError!?PatternToken {
+    pub fn nextToken(ml: *Self) LexerError!?ChangeToken {
         var iter = &ml.iterator;
         const start = iter.i;
         const slice = iter.nextCodepointSlice() orelse return null;
 
         if (isWhitespace(slice)) {
             ml.skipWhitespace();
-            return PatternToken{ .type = .Whitespace };
+            return ChangeToken{ .type = .Whitespace };
         }
         if (isDiacritics(slice)) {
             return error.WrongPlaceForDiacritic;
         }
         if (eq(slice, "[")) {
             //TODO: add wildcard modifiers
-            var pattern = PatternToken{ .type = .Mask, .mask = PhFeatures{} };
+            var pattern = ChangeToken{ .type = .Mask, .mask = PhFeatures{} };
             // add check for ]
             next: while (iter.peek(1).len != 0 and !eq(iter.peek(1), "]")) {
                 ml.skipWhitespace();
@@ -92,11 +91,6 @@ pub const MatchLexer = struct {
             return pattern;
         }
 
-        if (eq(slice, ">")) {
-            ml.skipWhitespace();
-            return PatternToken{ .type = .TransitionToChangeSet };
-        }
-
         var ph = Phoneme{ .ftrs = PhFeatures{} };
         ph.setPhSound(slice);
         while (isDiacritics(iter.peek(1))) {
@@ -104,17 +98,17 @@ pub const MatchLexer = struct {
             ph.setSoundWithDiacritic(iter.bytes[start..iter.i], d_slice);
         }
 
-        return PatternToken{ .type = .Mask, .mask = ph.ftrs };
+        return ChangeToken{ .type = .Mask, .mask = ph.ftrs };
     }
 };
 
 test "Parse features" {
     const source = "[+voice -flap]";
 
-    var lexer = MatchLexer.init(source);
+    var lexer = ChangeLexer.init(source);
     const mask = try lexer.nextToken();
 
-    try std.testing.expectEqual(mask.?.type, PatternTokenType.Mask);
+    try std.testing.expectEqual(mask.?.type, ChangeTokenType.Mask);
     var m = PhFeatures{};
     m.addFtr(.voice);
     m.removeFtr(.flap);

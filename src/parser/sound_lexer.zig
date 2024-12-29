@@ -8,13 +8,13 @@ const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const LexerError = @import("lexer_errors.zig").LexerError;
 
 pub const SoundLexer = struct {
-    source: [:0]const u8,
+    source: []const u8,
     curPos: u32,
     iterator: unicode.Utf8Iterator,
 
     const Self = @This();
 
-    pub fn init(source: [:0]const u8) Self {
+    pub fn init(source: []const u8) Self {
         const view = unicode.Utf8View.init(source) catch unreachable;
         return Self{
             .source = source,
@@ -59,14 +59,6 @@ const PhonemeTokenType = enum {
     Diacritic,
     Whitespace,
 };
-
-test "Test print" {
-    const source = "cʰɛm̥";
-    var lexer = SoundLexer.init(source);
-    while (try lexer.nextToken()) |t| {
-        std.debug.print(" {s} : {any}, {any}\n", .{ t.text, t.type, t.ph });
-    }
-}
 
 // class PhonemeLexer extends Lexer<PhonemeToken, PhonemeTokenType> {
 //
