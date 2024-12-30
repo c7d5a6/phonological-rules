@@ -80,7 +80,7 @@ pub const PhFeatures = struct {
     }
 };
 
-const StrArray = std.ArrayList(u8);
+pub const StrArray = std.ArrayList(u8);
 pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
     var lexer = SoundLexer.init(input);
     var result = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
@@ -144,7 +144,7 @@ test "distance" {
 }
 
 test "comonFeatures" {
-    const out = try commonFeatures(std.testing.allocator, "kszt");
+    const out = try commonFeatures(std.testing.allocator, "blkszt");
     defer out.deinit();
 
     std.debug.print("Common Features: {s}\n", .{out.items});
