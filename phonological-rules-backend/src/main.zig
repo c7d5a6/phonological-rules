@@ -12,7 +12,7 @@ const SharedAllocator = contextLib.SharedAllocator;
 
 const Handler = zap.Middleware.Handler(Context);
 
-const port = 3000;
+const port = 3003;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
