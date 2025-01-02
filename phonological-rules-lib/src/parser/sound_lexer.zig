@@ -3,6 +3,7 @@ const unicode = std.unicode;
 const util = @import("../utils/symbols.zig");
 const isWhitespace = util.isWhitespace;
 const isDiacritics = util.isDiacritics;
+const isAffricateSymbol = util.isAffricateSymbol;
 const Phoneme = @import("../sounds/phoneme.zig").Phoneme;
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const LexerError = @import("lexer_errors.zig").LexerError;
@@ -43,6 +44,26 @@ pub const SoundLexer = struct {
             const d_slice = sl.iterator.nextCodepointSlice().?;
             ph.setSoundWithDiacritic(sl.iterator.bytes[start..sl.iterator.i], d_slice);
         }
+        if (isAffricateSymbol(sl.iterator.peek(1))) {
+            _ = sl.iterator.nextCodepoint();
+            const n = sl.iterator.nextCodepointSlice();
+            if (n) |next| {
+                if (isDiacritics(next)) {
+                    return error.WrongPlaceForDiacritic;
+                }
+                if (isWhitespace(next)) {
+                    return error.WrongPlaceForWhitespace;
+                }
+            } else {
+                return error.EndAfterAffricate;
+            }
+            ph = Phoneme{ .ftrs = PhFeatures{} };
+            ph.setPhSound(sl.iterator.bytes[start..sl.iterator.i]);
+            while (isDiacritics(sl.iterator.peek(1))) {
+                const d_slice = sl.iterator.nextCodepointSlice().?;
+                ph.setSoundWithDiacritic(sl.iterator.bytes[start..sl.iterator.i], d_slice);
+            }
+        }
 
         return SoundToken{ .text = slice, .type = .Phoneme, .ph = ph };
     }
@@ -60,30 +81,14 @@ const PhonemeTokenType = enum {
     Whitespace,
 };
 
-// class PhonemeLexer extends Lexer<PhonemeToken, PhonemeTokenType> {
-//
-//   @override
-//   PhonemeToken getToken() {
-//     goNextChar();
-//     if (isWhitespace(curChar)) {
-//       return getWhitespaceToken();
-//     }
-//     if (isDiacritics(curChar)) {
-//       return getTokenByType(PhonemeTokenType.Diacritic);
-//     }
-//     if (curChar == '\0') {
-//       return getTokenByType(PhonemeTokenType.End);
-//     }
-//     return getTokenByType(PhonemeTokenType.Phoneme);
-//   }
-//
-//   @override
-//   PhonemeTokenType getWhitespaceType() {
-//     return PhonemeTokenType.Whitespace;
-//   }
-//
-//   @override
-//   PhonemeToken newToken(PhonemeTokenType type, String text, Object? literal) {
-//     return PhonemeToken(type, text, literal);
-//   }
-// }
+const tst = std.testing;
+
+test "parse diacritic" {
+    var lexer = SoundLexer.init("p͡f");
+
+    const symbol: SoundToken = try lexer.nextToken() orelse unreachable;
+    const end = lexer.nextToken();
+
+    try tst.expectEqual(end, null);
+    try tst.expectEqual(symbol.type, .Phoneme);
+}

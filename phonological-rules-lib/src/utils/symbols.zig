@@ -54,3 +54,8 @@ pub fn isWhitespace(smb: []const u8) bool {
 pub fn isDiacritics(smb: []const u8) bool {
     return isSmth(@TypeOf(diacritics), smb, diacritics);
 }
+
+pub fn isAffricateSymbol(smb: []const u8) bool {
+    const s = "\u{0361}";
+    return (s.len == smb.len and std.mem.eql(u8, s, smb));
+}

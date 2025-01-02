@@ -6,7 +6,7 @@ const StrArray = @import("sounds/ph_features.zig").StrArray;
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const a: std.mem.Allocator = if (builtin.is_test)
     std.testing.allocator
-else if (builtin.mode == .Debug) gpa.allocator() else std.heap.c_allocator;
+else if (builtin.mode == .Debug) gpa.allocator() else gpa.allocator();
 
 export fn commonFeatures(input: [*:0]const u8) [*:0]const u8 {
     var len: u64 = 0;

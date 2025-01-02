@@ -133,8 +133,6 @@ test "change sounds" {
 
     try expectEqualDeep(out1, "riapt͡ʃik");
     try expectEqualDeep(out2, "pots");
-    std.debug.print("\nRule:{s}\n\t  in:{s}\n\t out:{s}\n\n\n", .{ r, input1, out1 });
-    std.debug.print("\nRule:{s}\n\t  in:{s}\n\t out:{s}\n\n\n", .{ r, input2, out2 });
 }
 
 test "vakzal" {
@@ -145,7 +143,6 @@ test "vakzal" {
 
     const out = try rule.apply(std.testing.allocator, input);
     defer std.testing.allocator.free(out);
-    std.debug.print("\nRule:{s}\n\t  in:{s}\n\t out:{s}\n\n\n", .{ r, input, out });
 
     try expectEqualDeep(out, "vaɡzal");
 }
