@@ -11,13 +11,27 @@ else if (builtin.mode == .Debug) gpa.allocator() else std.heap.c_allocator;
 export fn commonFeatures(input: [*:0]const u8) [*:0]const u8 {
     var len: u64 = 0;
     while (input[len] != 0) : (len += 1) {}
+
     var result: StrArray = cmnFtr(a, input[0..len]) catch unreachable;
     defer result.deinit();
 
-    result.append(0) catch unreachable;
-    const str: [*:0]const u8 = @ptrCast(result.items);
+    const ar = a.allocSentinel(u8, result.items.len, 0) catch unreachable;
+    @memcpy(ar, result.items);
 
+    const str: [*:0]const u8 = @ptrCast(ar);
     return str;
+}
+
+export fn destroyCommonFeatures(input: [*:0]const u8) void {
+    var len: u64 = 0;
+    while (input[len] != 0) : (len += 1) {}
+    const array: []const u8 = input[0 .. len + 1];
+
+    a.free(array);
+}
+
+export fn commonNumber(i: usize) usize {
+    return i + 4;
 }
 
 test "new string" {

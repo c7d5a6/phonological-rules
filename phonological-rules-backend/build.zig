@@ -50,6 +50,10 @@ pub fn build(b: *std.Build) void {
     });
     exe.root_module.addImport("zap", zap.module("zap"));
     exe.linkLibrary(zap.artifact("facil.io"));
+    // PH
+    //
+    exe.addLibraryPath(b.path("libs"));
+    exe.linkSystemLibrary("ph_lib");
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
