@@ -81,6 +81,7 @@ pub const PhFeatures = struct {
 };
 
 pub const StrArray = std.ArrayList(u8);
+
 pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
     var lexer = SoundLexer.init(input);
     var result = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
@@ -104,6 +105,28 @@ pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
             has = true;
         }
         if (has) try out.appendSlice(@tagName(f));
+        i += 1;
+    }
+    return out;
+}
+
+pub fn distinctiveFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
+    var lexer = SoundLexer.init(input);
+    var result = PhFeatures{ .mnsMsk = 0x00000000, .plsMsk = 0x00000000 };
+    while (try lexer.nextToken()) |t| {
+        if (t.type == .Phoneme) {
+            result.plsMsk = result.plsMsk ^ t.ph.?.ftrs.plsMsk;
+            result.mnsMsk = result.mnsMsk ^ t.ph.?.ftrs.mnsMsk;
+        }
+    }
+    var out = StrArray.init(a);
+    var i: u64 = 0;
+    while (i < features.len) {
+        const f: Feature = @enumFromInt(i);
+        if (result.hasP(f) and result.hasM(f)) {
+            if (out.items.len != 0) try out.appendSlice(" ");
+            try out.appendSlice(@tagName(f));
+        }
         i += 1;
     }
     return out;
