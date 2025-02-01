@@ -83,14 +83,7 @@ pub const PhFeatures = struct {
 pub const StrArray = std.ArrayList(u8);
 
 pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
-    var lexer = SoundLexer.init(input);
-    var result = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
-    while (try lexer.nextToken()) |t| {
-        if (t.type == .Phoneme) {
-            result.plsMsk = result.plsMsk & t.ph.?.ftrs.plsMsk;
-            result.mnsMsk = result.mnsMsk & t.ph.?.ftrs.mnsMsk;
-        }
-    }
+    var result = try commonFeatures_(input);
     var out = StrArray.init(a);
     var i: u64 = 0;
     while (i < features.len) {
@@ -110,15 +103,20 @@ pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
     return out;
 }
 
-pub fn distinctiveFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
+pub fn commonFeatures_(input: []const u8) !PhFeatures {
     var lexer = SoundLexer.init(input);
-    var result = PhFeatures{ .mnsMsk = 0x00000000, .plsMsk = 0x00000000 };
+    var result = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
     while (try lexer.nextToken()) |t| {
         if (t.type == .Phoneme) {
-            result.plsMsk = result.plsMsk ^ t.ph.?.ftrs.plsMsk;
-            result.mnsMsk = result.mnsMsk ^ t.ph.?.ftrs.mnsMsk;
+            result.plsMsk = result.plsMsk & t.ph.?.ftrs.plsMsk;
+            result.mnsMsk = result.mnsMsk & t.ph.?.ftrs.mnsMsk;
         }
     }
+    return result;
+}
+
+pub fn distinctiveFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
+    var result = try distinctiveFeatures_(input);
     var out = StrArray.init(a);
     var i: u64 = 0;
     while (i < features.len) {
@@ -130,6 +128,24 @@ pub fn distinctiveFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
         i += 1;
     }
     return out;
+}
+
+fn distinctiveFeatures_(input: []const u8) !PhFeatures {
+    var lexer = SoundLexer.init(input);
+    var rAnd = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
+    var rOr = PhFeatures{ .mnsMsk = 0x00000000, .plsMsk = 0x00000000 };
+    var init = false;
+    while (try lexer.nextToken()) |t| {
+        if (t.type == .Phoneme) {
+            if (!init) {
+                result = t.ph;
+                init = true;
+            }
+            result.plsMsk = result.plsMsk ^ t.ph.?.ftrs.plsMsk;
+            result.mnsMsk = result.mnsMsk ^ t.ph.?.ftrs.mnsMsk;
+        }
+    }
+    return result;
 }
 
 const testing = @import("std").testing;
@@ -171,4 +187,26 @@ test "comonFeatures" {
     defer out.deinit();
 
     std.debug.print("Common Features: {s}\n", .{out.items});
+}
+
+test "distinctiveFeatures" {
+    const result1 = try distinctiveFeatures_("dt");
+    const result2 = try distinctiveFeatures_("pt");
+    const result3 = try distinctiveFeatures_("ptd");
+
+    var i: u64 = 0;
+    while (i < features.len) {
+        const f: Feature = @enumFromInt(i);
+        if (result1.hasP(f) or result2.hasP(f) or result3.hasP(f)) {
+            std.debug.print("Distinctive feature +{s}: {any} {any} {any}\n", .{ @tagName(f), result1.hasP(f), result2.hasP(f), result3.hasP(f) });
+        }
+        if (result1.hasM(f) or result2.hasM(f) or result3.hasM(f)) {
+            std.debug.print("Distinctive feature -{s}: {any} {any} {any}\n", .{ @tagName(f), result1.hasM(f), result2.hasM(f), result3.hasM(f) });
+        }
+        i += 1;
+    }
+
+    std.debug.print("Distinctive Features: {any}\n", .{result1});
+    std.debug.print("Distinctive Features: {any}\n", .{result2});
+    std.debug.print("Distinctive Features: {any}\n", .{result3});
 }
