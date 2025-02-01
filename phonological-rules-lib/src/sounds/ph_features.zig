@@ -134,18 +134,15 @@ fn distinctiveFeatures_(input: []const u8) !PhFeatures {
     var lexer = SoundLexer.init(input);
     var rAnd = PhFeatures{ .mnsMsk = 0xFFFFFFFF, .plsMsk = 0xFFFFFFFF };
     var rOr = PhFeatures{ .mnsMsk = 0x00000000, .plsMsk = 0x00000000 };
-    var init = false;
     while (try lexer.nextToken()) |t| {
         if (t.type == .Phoneme) {
-            if (!init) {
-                result = t.ph;
-                init = true;
-            }
-            result.plsMsk = result.plsMsk ^ t.ph.?.ftrs.plsMsk;
-            result.mnsMsk = result.mnsMsk ^ t.ph.?.ftrs.mnsMsk;
+            rAnd.plsMsk = rAnd.plsMsk & t.ph.?.ftrs.plsMsk;
+            rAnd.mnsMsk = rAnd.mnsMsk & t.ph.?.ftrs.mnsMsk;
+            rOr.plsMsk = rOr.plsMsk | t.ph.?.ftrs.plsMsk;
+            rOr.mnsMsk = rOr.mnsMsk | t.ph.?.ftrs.mnsMsk;
         }
     }
-    return result;
+    return .{ .plsMsk = rAnd.plsMsk ^ rOr.plsMsk, .mnsMsk = rAnd.mnsMsk ^ rOr.mnsMsk };
 }
 
 const testing = @import("std").testing;
