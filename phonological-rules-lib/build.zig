@@ -10,8 +10,11 @@ pub fn build(b: *std.Build) !void {
     const version_slice = if (opt_version_string) |version| version else "0.1.0";
     const version = try b.allocator.dupeZ(u8, version_slice);
     const semver = try std.SemanticVersion.parse(version);
-    // exe_options.addOption(std.SemanticVersion, "semver", semver);
-    std.debug.print("Version {s}\nSemantic {any}", .{ version, semver });
+    // std.debug.print("Version {s}\nSemantic {any}", .{ version, semver });
+
+    // Options
+    const options = b.addOptions();
+    options.addOption([:0]const u8, "version", version);
 
     // Build
     const target = b.standardTargetOptions(.{});
@@ -24,6 +27,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .version = semver,
     });
+    lib_ph.root_module.addOptions("config", options);
     b.installArtifact(lib_ph);
 
     // Tests
