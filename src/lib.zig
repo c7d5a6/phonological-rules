@@ -15,7 +15,14 @@ export fn version() [*:0]const u8 {
     return str;
 }
 
-export fn commonFeatures(input: [*:0]const u8) [*:0]const u8 {
+const FeaturesResult = extern struct {
+    features: [*:0]const u8,
+    export fn destroy(self: FeaturesResult) void {
+        destroyStr(self.features);
+    }
+};
+
+export fn commonFeatures(input: [*:0]const u8) FeaturesResult {
     var len: u64 = 0;
     while (input[len] != 0) : (len += 1) {}
 
@@ -26,7 +33,7 @@ export fn commonFeatures(input: [*:0]const u8) [*:0]const u8 {
     @memcpy(ar, result.items);
 
     const str: [*:0]const u8 = @ptrCast(ar);
-    return str;
+    return .{ .features = str };
 }
 
 export fn distinctiveFeatures(input: [*:0]const u8) [*:0]const u8 {
@@ -43,7 +50,7 @@ export fn distinctiveFeatures(input: [*:0]const u8) [*:0]const u8 {
     return str;
 }
 
-export fn destroyStr(input: [*:0]const u8) void {
+fn destroyStr(input: [*:0]const u8) void {
     var len: u64 = 0;
     while (input[len] != 0) : (len += 1) {}
     const array: []const u8 = input[0 .. len + 1];
@@ -51,13 +58,9 @@ export fn destroyStr(input: [*:0]const u8) void {
     a.free(array);
 }
 
-export fn commonNumber(i: usize) usize {
-    return i + 4;
-}
-
 test "new string" {
     const res = commonFeatures("abc");
-    defer destroyStr(res);
+    defer destroyStr(res.features);
 }
 
 test "version" {
