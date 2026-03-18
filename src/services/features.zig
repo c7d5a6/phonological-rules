@@ -34,7 +34,11 @@ pub fn on_common_features(a: Allocator, r: Request, c: *Context, params: anytype
         // const res = res_p[0..len];
         std.debug.print("\n\tRES[{d}]: {any}\n", .{ len_cmn, &res_cmn });
         std.debug.print("\n\tRES[{d}]: {any}\n", .{ len_dis, &res_dis });
-        const json = std.json.stringifyAlloc(a, F{ .common = res_cmn[0..len_cmn], .distinctive = res_dis[0..len_dis] }, .{ .escape_unicode = true, .emit_null_optional_fields = false }) catch unreachable;
+        const json = std.json.Stringify.valueAlloc(
+            a,
+            F{ .common = res_cmn[0..len_cmn], .distinctive = res_dis[0..len_dis] },
+            .{ .escape_unicode = true, .emit_null_optional_fields = false },
+        ) catch unreachable;
         std.debug.print("\n\tJSON: {s}\n", .{json});
         defer a.free(json);
         r.setContentType(.JSON) catch return;

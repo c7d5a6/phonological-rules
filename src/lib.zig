@@ -27,7 +27,7 @@ export fn commonFeatures(input: [*:0]const u8) FeaturesResult {
     while (input[len] != 0) : (len += 1) {}
 
     var result: StrArray = cmnFtr(a, input[0..len]) catch unreachable;
-    defer result.deinit();
+    defer result.deinit(a);
 
     const ar = a.allocSentinel(u8, result.items.len, 0) catch unreachable;
     @memcpy(ar, result.items);
@@ -41,7 +41,7 @@ export fn distinctiveFeatures(input: [*:0]const u8) [*:0]const u8 {
     while (input[len] != 0) : (len += 1) {}
 
     var result: StrArray = dstFtr(a, input[0..len]) catch unreachable;
-    defer result.deinit();
+    defer result.deinit(a);
 
     const ar = a.allocSentinel(u8, result.items.len, 0) catch unreachable;
     @memcpy(ar, result.items);
@@ -50,7 +50,7 @@ export fn distinctiveFeatures(input: [*:0]const u8) [*:0]const u8 {
     return str;
 }
 
-fn destroyStr(input: [*:0]const u8) void {
+export fn destroyStr(input: [*:0]const u8) void {
     var len: u64 = 0;
     while (input[len] != 0) : (len += 1) {}
     const array: []const u8 = input[0 .. len + 1];
@@ -65,4 +65,9 @@ test "new string" {
 
 test "version" {
     // std.debug.print("* * * version {any}", .{config.version});
+}
+
+test {
+    _ = @import("matchers/rule.zig");
+    // or refAllDeclsRecursive
 }

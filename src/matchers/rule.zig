@@ -43,14 +43,14 @@ const Rule = struct {
                 toCS = true;
                 break;
             }
-            try match.append(t);
+            try match.append(a, t);
         }
         if (!toCS) return error.NoChangeSet;
         var change = try CTArray.initCapacity(a, 3);
         const change_rule = rule_in[matcher.iterator.i..];
         var changer = ChangeLexer.init(change_rule);
         while (try changer.nextToken()) |t| {
-            try change.append(t);
+            try change.append(a, t);
         }
 
         return Self{
@@ -61,10 +61,10 @@ const Rule = struct {
         };
     }
 
-    pub fn destroy(self: *const Self) void {
+    pub fn destroy(self: *Self) void {
         self.arena.deinit();
-        self.match.deinit();
-        self.change.deinit();
+        self.match.deinit(self.a);
+        self.change.deinit(self.a);
     }
 
     pub fn apply(self: *Self, alloc: std.mem.Allocator, input: [:0]const u8) ![:0]const u8 {
@@ -72,13 +72,13 @@ const Rule = struct {
         defer _ = self.arena.reset(.retain_capacity);
         var result = try StrArray.initCapacity(aa, input.len);
         var sound = try STArray.initCapacity(aa, input.len);
-        defer result.deinit();
-        defer sound.deinit();
+        defer result.deinit(aa);
+        defer sound.deinit(aa);
 
         var lexer = SoundLexer.init(input);
 
         while (try lexer.nextToken()) |t| {
-            try sound.append(t);
+            try sound.append(aa, t);
         }
 
         var i: u64 = 0;
@@ -86,7 +86,7 @@ const Rule = struct {
             const n_i = find_match(sound.items, i, self.match.items) orelse sound.items.len;
             while (i < n_i) {
                 const s = try getSound(sound.items[i], aa);
-                try result.appendSlice(s);
+                try result.appendSlice(aa, s);
                 i += 1;
             }
             var m: u64 = 0;
@@ -95,13 +95,13 @@ const Rule = struct {
                 const ch: ChangeToken = self.change.items[m];
                 switch (ch.type) {
                     .Whitespace => {
-                        try result.appendSlice(" ");
+                        try result.appendSlice(aa, " ");
                     },
                     .Mask => {
                         if (st.type == .Phoneme) {
                             const ph = st.ph.?.applyChanges(ch.mask.?);
                             const s = phonemeSound(ph, aa);
-                            try result.appendSlice(s);
+                            try result.appendSlice(aa, s);
                         } else unreachable;
                     },
                     else => unreachable,
@@ -118,6 +118,12 @@ const Rule = struct {
 };
 
 const expectEqualDeep = std.testing.expectEqualDeep;
+
+test "rule struct size" {
+    // Prints the size of an empty struct
+    std.debug.print("Rule struct size {any}\n", .{@sizeOf(Rule)});
+    std.debug.print("Rule PTARRAY size {any}\n", .{@sizeOf(PTArray)});
+}
 
 test "change sounds" {
     const input1 = "riabt͡ʃik";

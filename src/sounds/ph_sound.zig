@@ -61,8 +61,8 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     var heap = PriorityQueue.init(a, QueueContext{ .dest = dest });
     defer heap.deinit();
 
-    var visited = VisitedList.init(a);
-    defer visited.deinit();
+    var visited = VisitedList.initCapacity(a, 0) catch unreachable;
+    defer visited.deinit(a);
 
     for (phonemes) |phc| {
         const itm = QueueMember{ .f = phc.ftrs, .cost = 1, .sound = phc.orig orelse unreachable };
@@ -71,7 +71,7 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     }
 
     while (heap.removeOrNull()) |itm| {
-        const edge_ptr = visited.addOne() catch unreachable;
+        const edge_ptr = visited.addOne(a) catch unreachable;
         edge_ptr.* = itm;
         const edge = edge_ptr.*;
         d_loop: for (diacritics) |d| {

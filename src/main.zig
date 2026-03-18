@@ -14,6 +14,16 @@ const Handler = zap.Middleware.Handler(Context);
 
 const port = 3003;
 
+pub const std_options: std.Options = .{
+    // general log level
+    .log_level = if (builtin.mode == .Debug) .info else .err,
+    .log_scope_levels = &[_]std.log.ScopeLevel{
+        // log level specific to zap
+        .{ .scope = .zap, .level = if (builtin.mode == .Debug) .info else .warn },
+        .{ .scope = .auth, .level = if (builtin.mode == .Debug) .info else .err },
+    },
+};
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = if (builtin.mode == .Debug) gpa.allocator() else std.heap.c_allocator;
@@ -48,7 +58,6 @@ pub fn main() !void {
             std.log.debug("\nLISTEN ERROR: {any}\n", .{err});
             return;
         };
-        if (builtin.mode == .Debug) zap.enableDebugLog();
         std.log.debug("Listening on 0.0.0.0:{d}\n", .{port});
 
         //

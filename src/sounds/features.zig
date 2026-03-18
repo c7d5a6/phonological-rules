@@ -136,7 +136,7 @@ const FeatureName = struct {
     name: [:0]const u8,
     f: Feature,
 };
-const f_len = @typeInfo(Feature).Enum.fields.len;
+const f_len = @typeInfo(Feature).@"enum".fields.len;
 fn sortFLen(_: void, l: FeatureName, r: FeatureName) bool {
     return l.name.len > r.name.len;
 }

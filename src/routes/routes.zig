@@ -1,6 +1,6 @@
 const std = @import("std");
 const zap = @import("zap");
-const Method = zap.Method;
+const Method = zap.http.Method;
 const Context = @import("../middle/context.zig").Context;
 const Regex = @import("matcher.zig").Regex;
 const ControllerError = @import("router-errors.zig").ControllerError;
@@ -126,7 +126,7 @@ fn getPathPattern(a: std.mem.Allocator, path: [:0]const u8) [:0]u8 {
 
 fn getRouteParams(comptime T: type, comptime path: []const u8, url: []const u8) T {
     const params_type_info = @typeInfo(T);
-    if (params_type_info != .Struct) {
+    if (params_type_info != .@"struct") {
         @compileError("expected tuple or struct argument, found " ++ @typeName(T));
     }
     var result: T = undefined;

@@ -84,20 +84,20 @@ pub const StrArray = std.ArrayList(u8);
 
 pub fn commonFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
     var result = try commonFeatures_(input);
-    var out = StrArray.init(a);
+    var out = try StrArray.initCapacity(a, 0);
     var i: u64 = 0;
     while (i < features.len) {
         const f: Feature = @enumFromInt(i);
         var has = false;
         if (result.hasP(f)) {
-            try out.appendSlice(if (out.items.len == 0) "+" else " +");
+            try out.appendSlice(a, if (out.items.len == 0) "+" else " +");
             has = true;
         }
         if (result.hasM(f)) {
-            try out.appendSlice(if (out.items.len == 0) "-" else " -");
+            try out.appendSlice(a, if (out.items.len == 0) "-" else " -");
             has = true;
         }
-        if (has) try out.appendSlice(@tagName(f));
+        if (has) try out.appendSlice(a, @tagName(f));
         i += 1;
     }
     return out;
@@ -117,13 +117,13 @@ pub fn commonFeatures_(input: []const u8) !PhFeatures {
 
 pub fn distinctiveFeatures(a: std.mem.Allocator, input: []const u8) !StrArray {
     var result = try distinctiveFeatures_(input);
-    var out = StrArray.init(a);
+    var out = try StrArray.initCapacity(a, 0);
     var i: u64 = 0;
     while (i < features.len) {
         const f: Feature = @enumFromInt(i);
         if (result.hasP(f) and result.hasM(f)) {
-            if (out.items.len != 0) try out.appendSlice(" ");
-            try out.appendSlice(@tagName(f));
+            if (out.items.len != 0) try out.appendSlice(a, " ");
+            try out.appendSlice(a, @tagName(f));
         }
         i += 1;
     }
@@ -180,8 +180,8 @@ test "distance" {
 }
 
 test "comonFeatures" {
-    const out = try commonFeatures(std.testing.allocator, "blkszt");
-    defer out.deinit();
+    var out = try commonFeatures(std.testing.allocator, "blkszt");
+    defer out.deinit(std.testing.allocator);
 
     std.debug.print("Common Features: {s}\n", .{out.items});
 }
