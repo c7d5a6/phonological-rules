@@ -16,11 +16,13 @@ const CTArray = std.ArrayList(ChangeToken);
 const STArray = std.ArrayList(SoundToken);
 const StrArray = std.ArrayList(u8);
 
+var DAlloc = std.heap.DebugAllocator(.{}){};
+
 const RuleError = error{
     NoChangeSet,
 };
 
-const Rule = struct {
+pub const Rule = struct {
     const Self = @This();
     a: std.mem.Allocator,
     arena: std.heap.ArenaAllocator,
@@ -28,11 +30,11 @@ const Rule = struct {
     change: CTArray,
     // Changeset,
     // Context
-    pub fn init(rule_in: [:0]const u8) !Self {
+    pub fn init(rule_in: []const u8) !Self {
         const a = if (builtin.is_test)
             std.testing.allocator
         else if (builtin.mode == .Debug)
-            std.heap.GeneralPurposeAllocator({})
+            DAlloc.allocator()
         else
             std.heap.c_allocator;
         var match = try PTArray.initCapacity(a, 3);
@@ -67,7 +69,7 @@ const Rule = struct {
         self.change.deinit(self.a);
     }
 
-    pub fn apply(self: *Self, alloc: std.mem.Allocator, input: [:0]const u8) ![:0]const u8 {
+    pub fn apply(self: *Self, alloc: std.mem.Allocator, input: []const u8) ![:0]const u8 {
         const aa = self.arena.allocator();
         defer _ = self.arena.reset(.retain_capacity);
         var result = try StrArray.initCapacity(aa, input.len);
