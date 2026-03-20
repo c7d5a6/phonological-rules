@@ -138,6 +138,7 @@ test "version" {
 
 test {
     _ = @import("matchers/rule.zig");
+    _ = @import("matchers/rule_tests.zig");
     std.testing.refAllDeclsRecursive(@This());
     // or refAllDeclsRecursive
 }

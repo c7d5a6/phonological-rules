@@ -123,38 +123,8 @@ pub const Rule = struct {
     }
 };
 
-const expectEqualDeep = std.testing.expectEqualDeep;
-
 test "rule struct size" {
     // Prints the size of an empty struct
     std.debug.print("Rule struct size {any}\n", .{@sizeOf(Rule)});
     std.debug.print("Rule PTARRAY size {any}\n", .{@sizeOf(PTArray)});
-}
-
-test "change sounds" {
-    const input1 = "riabt͡ʃik";
-    const input2 = "pods";
-    const r = "[+voice -syllabic][-voice]>[-voice][]";
-    var rule = try Rule.init(r);
-    defer rule.destroy();
-
-    const out1 = try rule.apply(std.testing.allocator, input1);
-    const out2 = try rule.apply(std.testing.allocator, input2);
-    defer std.testing.allocator.free(out1);
-    defer std.testing.allocator.free(out2);
-
-    try expectEqualDeep(out1, "riapt͡ʃik");
-    try expectEqualDeep(out2, "pots");
-}
-
-test "vakzal" {
-    const input = "vakzal";
-    const r = "[+dorsal -voice][+voice]>[+voice][]";
-    var rule = try Rule.init(r);
-    defer rule.destroy();
-
-    const out = try rule.apply(std.testing.allocator, input);
-    defer std.testing.allocator.free(out);
-
-    try expectEqualDeep(out, "vaɡzal");
 }
