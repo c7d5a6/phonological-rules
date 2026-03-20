@@ -78,15 +78,18 @@ export fn createRule(input: [*:0]const u8) *ResultRule {
         rr.is_error = false;
     } else |_| {
         rr.is_error = true;
+        rr.rule = null;
     }
 
     return rr;
 }
 
 export fn destroyRule(rrule: *ResultRule) void {
-    if (rrule.rule) |r| {
-        r.destroy();
-        a.destroy(r);
+    if (rrule.is_error) {
+        if (rrule.rule) |r| {
+            r.destroy();
+            a.destroy(r);
+        }
     }
     a.destroy(rrule);
 }
@@ -111,7 +114,8 @@ export fn applyRule(input: [*:0]const u8, rule: *Rule) *Result {
         result.is_error = false;
         result.result = str_prt;
     } else |_| {
-        result.is_error = false;
+        result.is_error = true;
+        result.result = null;
     }
     return result;
 }

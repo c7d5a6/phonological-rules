@@ -6,6 +6,7 @@ const Regex = @import("matcher.zig").Regex;
 const ControllerError = @import("router-errors.zig").ControllerError;
 const features = @import("../services/features.zig");
 const common = @import("../services/common.zig");
+const rule = @import("../services/rules.zig");
 
 pub const ControllerRequest = *const fn (std.mem.Allocator, zap.Request, *Context, anytype) ControllerError!void;
 pub const DispatchRoutes = *const fn (std.mem.Allocator, zap.Request, *Context) void;
@@ -32,6 +33,8 @@ const rt = [_]struct { Method, Access, [:0]const u8, type, ControllerRequest }{
     .{ .GET, .Unauthorized, "/api/version", struct {}, common.on_version },
     // -- Features
     .{ .POST, .Unauthorized, "/api/features/common", struct {}, features.on_common_features },
+    // -- Rules
+    .{ .POST, .Unauthorized, "/api/rules/apply", struct {}, rule.on_apply_rule },
     // .{ .GET, .Authorized, "/collections", struct {}, collections.on_get_collections },
     // .{ .GET, .Authorized, "/collections/fav", struct {}, collections.on_get_fav_collections },
     // .{ .GET, .Authorized, "/collections/{collectionId}", struct { collectionId: i64 }, collections.on_get_collection },

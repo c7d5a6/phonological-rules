@@ -71,6 +71,8 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     }
 
     while (heap.removeOrNull()) |itm| {
+        //TODO: prevent transaction to unknown routes a > b 
+        if(visited.items.len > 1000) break;
         const edge_ptr = visited.addOne(a) catch unreachable;
         edge_ptr.* = itm;
         const edge = edge_ptr.*;
@@ -87,7 +89,7 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
             heap.add(new) catch unreachable;
         }
     }
-    unreachable;
+    return "?";
 }
 
 fn parseSound(orig: ?*const QueueMember, last: []const u8, a: Allocator) [:0]const u8 {

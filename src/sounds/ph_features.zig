@@ -68,7 +68,7 @@ pub const PhFeatures = struct {
     }
 
     pub fn eql(self: PhFeatures, phf: PhFeatures) bool {
-        return self.plsMsk == phf.plsMsk and self.mnsMsk == self.mnsMsk;
+        return self.plsMsk == phf.plsMsk and self.mnsMsk == phf.mnsMsk;
     }
 
     pub fn dist(self: PhFeatures, phf: PhFeatures) u32 {

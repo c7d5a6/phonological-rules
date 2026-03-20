@@ -19,6 +19,7 @@ const StrArray = std.ArrayList(u8);
 var DAlloc = std.heap.DebugAllocator(.{}){};
 
 const RuleError = error{
+    NoMatcherSet,
     NoChangeSet,
 };
 
@@ -36,7 +37,7 @@ pub const Rule = struct {
         else if (builtin.mode == .Debug)
             DAlloc.allocator()
         else
-            std.heap.c_allocator;
+            std.heap.smp_allocator;
         var match = try PTArray.initCapacity(a, 3);
         var matcher = MatchLexer.init(rule_in);
         var toCS = false;
@@ -50,6 +51,7 @@ pub const Rule = struct {
         if (!toCS) return error.NoChangeSet;
         var change = try CTArray.initCapacity(a, 3);
         const change_rule = rule_in[matcher.iterator.i..];
+        if(change_rule.len == 0) return error.NoChangeSet;
         var changer = ChangeLexer.init(change_rule);
         while (try changer.nextToken()) |t| {
             try change.append(a, t);
@@ -102,7 +104,9 @@ pub const Rule = struct {
                     .Mask => {
                         if (st.type == .Phoneme) {
                             const ph = st.ph.?.applyChanges(ch.mask.?);
+                            std.debug.print("\t\tnew ph {any}\n", .{ph});
                             const s = phonemeSound(ph, aa);
+                            std.debug.print("\t\tnew s {s}\n", .{s});
                             try result.appendSlice(aa, s);
                         } else unreachable;
                     },

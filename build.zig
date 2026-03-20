@@ -41,6 +41,7 @@ pub fn build(b: *std.Build) !void {
         .version = semver,
     });
     lib_ph.root_module.addOptions("config", options);
+    // lib_ph.linkLibC();
     b.installArtifact(lib_ph);
 
     // Test
@@ -72,7 +73,15 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     backend.root_module.addImport("zap", zap.module("zap"));
-    backend.linkLibrary(zap.artifact("facil.io"));
+    const facil = zap.artifact("facil.io");
+    backend.linkLibrary(facil);
+    // Ship facil.io with the backend and make the runtime loader look next to
+    // the deployed binary, instead of the build machine's `.zig-cache` path.
+    b.installArtifact(facil);
+    // Support both local `zig-out/bin` execution (`../lib`) and your deployed
+    // layout (`./libs`).
+    backend.root_module.addRPathSpecial("$ORIGIN/../lib");
+    backend.root_module.addRPathSpecial("$ORIGIN/libs");
     // PH
     // backend.addLibraryPath(b.path("libs"));
     backend.linkLibrary(lib_ph);
