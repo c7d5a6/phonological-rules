@@ -1,3 +1,5 @@
+// SOURCE:
+// Hayes, Bruce (2009). Introductory Phonology. Blackwell Textbooks in Linguistics. Wiley-Blackwell. ISBN 978-1-4051-8411-3.
 const std = @import("std");
 
 pub const Feature = enum(u5) {
