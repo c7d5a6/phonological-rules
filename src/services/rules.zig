@@ -24,6 +24,12 @@ pub fn on_apply_rule(a: Allocator, r: Request, c: *Context, params: anytype) Con
 
     const ApplyRule = struct { rule: []const u8, str: []const u8 };
     const apply_rule = std.json.parseFromSlice(ApplyRule, a, body, .{}) catch return error.InternalError;
+    if (!std.unicode.utf8ValidateSlice(apply_rule.value.rule) or
+        !std.unicode.utf8ValidateSlice(apply_rule.value.str))
+    {
+        r.sendError(error.InvalidUtf8, null, 400);
+        return;
+    }
     const rule_str = a.allocSentinel(u8, apply_rule.value.rule.len, 0) catch unreachable;
     defer a.free(rule_str);
     @memcpy(rule_str[0..rule_str.len], apply_rule.value.rule);
