@@ -59,7 +59,7 @@ export fn destroyStr(input: [*:0]const u8) void {
     a.free(array);
 }
 
-const ResultRule = struct {
+const ResultRule = extern struct {
     is_error: bool,
     rule: ?*Rule,
 };
@@ -94,7 +94,7 @@ export fn destroyRule(rrule: *ResultRule) void {
     a.destroy(rrule);
 }
 
-const Result = struct {
+const Result = extern struct {
     is_error: bool,
     result: ?[*:0]const u8,
 };
