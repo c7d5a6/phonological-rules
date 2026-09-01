@@ -5,6 +5,8 @@ const cmnFtr = @import("sounds/ph_features.zig").commonFeatures;
 const dstFtr = @import("sounds/ph_features.zig").distinctiveFeatures;
 const Rule = @import("matchers/rule.zig").Rule;
 const StrArray = @import("sounds/ph_features.zig").StrArray;
+const ResultRule = @import("ffi_types.zig").ResultRule;
+const Result = @import("ffi_types.zig").Result;
 
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const a: std.mem.Allocator = if (builtin.is_test)
@@ -59,11 +61,6 @@ export fn destroyStr(input: [*:0]const u8) void {
     a.free(array);
 }
 
-const ResultRule = extern struct {
-    is_error: bool,
-    rule: ?*Rule,
-};
-
 export fn createRule(input: [*:0]const u8) *ResultRule {
     var len: u64 = 0;
     while (input[len] != 0) : (len += 1) {}
@@ -91,11 +88,6 @@ export fn destroyRule(rrule: *ResultRule) void {
     }
     a.destroy(rrule);
 }
-
-const Result = extern struct {
-    is_error: bool,
-    result: ?[*:0]const u8,
-};
 
 export fn applyRule(input: [*:0]const u8, rule: *Rule) *Result {
     var len: u64 = 0;
@@ -148,6 +140,7 @@ test "version" {
 }
 
 test {
+    _ = @import("ffi_types.zig");
     _ = @import("matchers/rule.zig");
     _ = @import("matchers/rule_tests.zig");
     std.testing.refAllDeclsRecursive(@This());

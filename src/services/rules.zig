@@ -5,21 +5,13 @@ const Request = zap.Request;
 const Context = @import("../middle/context.zig").Context;
 const ControllerError = @import("../routes/router-errors.zig").ControllerError;
 const Rule = @import("../matchers/rule.zig").Rule;
+const ResultRule = @import("../ffi_types.zig").ResultRule;
+const Result = @import("../ffi_types.zig").Result;
 
 extern fn commonFeatures(input: [*:0]const u8) [*:0]const u8;
 
-const ResultRule = struct {
-    is_error: bool,
-    rule: ?*Rule,
-};
-
 extern fn createRule(input: [*:0]const u8) *ResultRule;
 extern fn destroyRule(rrule: *ResultRule) void;
-
-const Result = struct {
-    is_error: bool,
-    result: ?[*:0]const u8,
-};
 
 extern fn applyRule(input: [*:0]const u8, rule: *Rule) *Result;
 extern fn destroyRuleResult(result: *Result) void;
