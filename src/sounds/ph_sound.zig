@@ -43,7 +43,7 @@ const QueueContext = struct { dest: PhFeatures };
 const QueueMember = struct {
     f: PhFeatures,
     cost: u32,
-    from: ?*const QueueMember = null,
+    from: ?usize = null,
     sound: []const u8,
 };
 fn queueCompare(context: QueueContext, a: QueueMember, b: QueueMember) Order {
@@ -66,47 +66,48 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
 
     for (phonemes) |phc| {
         const itm = QueueMember{ .f = phc.ftrs, .cost = 1, .sound = phc.orig orelse unreachable };
-        if (phc.ftrs.eql(dest)) return parseSound(null, phc.orig orelse unreachable, a);
+        if (phc.ftrs.eql(dest)) return parseSound(&.{}, null, phc.orig orelse unreachable, a);
         heap.add(itm) catch unreachable;
     }
 
     while (heap.removeOrNull()) |itm| {
         //TODO: prevent transaction to unknown routes a > b 
         if(visited.items.len > 1000) break;
-        const edge_ptr = visited.addOne(a) catch unreachable;
-        edge_ptr.* = itm;
-        const edge = edge_ptr.*;
+        const edge_idx = visited.items.len;
+        visited.append(a, itm) catch unreachable;
+        const edge = visited.items[edge_idx];
         d_loop: for (diacritics) |d| {
             const next = edge.f.applyChange(d.ftrs);
             for (visited.items) |v| {
                 if (next.eql(v.f)) continue :d_loop;
             }
-            if (next.eql(dest)) return parseSound(&edge, d.orig orelse unreachable, a);
+            if (next.eql(dest)) return parseSound(visited.items, edge_idx, d.orig orelse unreachable, a);
             for (heap.items) |h| {
                 if (next.eql(h.f)) continue :d_loop;
             }
-            const new = QueueMember{ .f = next, .cost = 1 + edge.cost, .from = edge_ptr, .sound = d.orig orelse unreachable };
+            const new = QueueMember{ .f = next, .cost = 1 + edge.cost, .from = edge_idx, .sound = d.orig orelse unreachable };
             heap.add(new) catch unreachable;
         }
     }
     return "?";
 }
 
-fn parseSound(orig: ?*const QueueMember, last: []const u8, a: Allocator) [:0]const u8 {
-    var temp = orig;
+fn parseSound(visited: []const QueueMember, from: ?usize, last: []const u8, a: Allocator) [:0]const u8 {
+    var idx = from;
     var length = last.len;
-    while (temp) |qm| {
-        temp = qm.from;
-        length += qm.sound.len;
+    while (idx) |i| {
+        length += visited[i].sound.len;
+        idx = visited[i].from;
     }
     var sound = a.allocSentinel(u8, length, 0) catch unreachable;
-    temp = orig;
+    idx = from;
     var end = length;
     var start = length - last.len;
     @memcpy(sound[start..end], last);
     end = start;
-    while (temp) |qm| {
-        temp = qm.from;
+    while (idx) |i| {
+        const qm = visited[i];
+        idx = qm.from;
         start = end - qm.sound.len;
         @memcpy(sound[start..end], qm.sound);
         end = start;

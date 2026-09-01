@@ -5,21 +5,13 @@ const Request = zap.Request;
 const Context = @import("../middle/context.zig").Context;
 const ControllerError = @import("../routes/router-errors.zig").ControllerError;
 const Rule = @import("../matchers/rule.zig").Rule;
+const ResultRule = @import("../ffi_types.zig").ResultRule;
+const Result = @import("../ffi_types.zig").Result;
 
 extern fn commonFeatures(input: [*:0]const u8) [*:0]const u8;
 
-const ResultRule = struct {
-    is_error: bool,
-    rule: ?*Rule,
-};
-
 extern fn createRule(input: [*:0]const u8) *ResultRule;
 extern fn destroyRule(rrule: *ResultRule) void;
-
-const Result = struct {
-    is_error: bool,
-    result: ?[*:0]const u8,
-};
 
 extern fn applyRule(input: [*:0]const u8, rule: *Rule) *Result;
 extern fn destroyRuleResult(result: *Result) void;
@@ -32,6 +24,12 @@ pub fn on_apply_rule(a: Allocator, r: Request, c: *Context, params: anytype) Con
 
     const ApplyRule = struct { rule: []const u8, str: []const u8 };
     const apply_rule = std.json.parseFromSlice(ApplyRule, a, body, .{}) catch return error.InternalError;
+    if (!std.unicode.utf8ValidateSlice(apply_rule.value.rule) or
+        !std.unicode.utf8ValidateSlice(apply_rule.value.str))
+    {
+        r.sendError(error.InvalidUtf8, null, 400);
+        return;
+    }
     const rule_str = a.allocSentinel(u8, apply_rule.value.rule.len, 0) catch unreachable;
     defer a.free(rule_str);
     @memcpy(rule_str[0..rule_str.len], apply_rule.value.rule);
