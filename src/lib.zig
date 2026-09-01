@@ -105,12 +105,8 @@ export fn applyRule(input: [*:0]const u8, rule: *Rule) *Result {
     const e_res_srt = rule.apply(a, input[0..len]);
 
     if (e_res_srt) |res| {
-        const result_str = a.allocSentinel(u8, res.len, 0) catch unreachable;
-        @memcpy(result_str, res);
-
-        const str_prt: [*:0]const u8 = @ptrCast(result_str);
         result.is_error = false;
-        result.result = str_prt;
+        result.result = res.ptr;
     } else |_| {
         result.is_error = true;
         result.result = null;
@@ -135,6 +131,16 @@ test "destroyRule frees a successful rule" {
     defer destroyRule(rr);
     try std.testing.expect(!rr.is_error);
     try std.testing.expect(rr.rule != null);
+}
+
+test "applyRule result is freed by destroyRuleResult" {
+    const rr = createRule("[+voice -syllabic][-voice]>[-voice][]");
+    defer destroyRule(rr);
+    try std.testing.expect(rr.rule != null);
+    const result = applyRule("pods", rr.rule.?);
+    defer destroyRuleResult(result);
+    try std.testing.expect(!result.is_error);
+    try std.testing.expect(result.result != null);
 }
 
 test "version" {
