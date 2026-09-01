@@ -85,11 +85,9 @@ export fn createRule(input: [*:0]const u8) *ResultRule {
 }
 
 export fn destroyRule(rrule: *ResultRule) void {
-    if (rrule.is_error) {
-        if (rrule.rule) |r| {
-            r.destroy();
-            a.destroy(r);
-        }
+    if (rrule.rule) |r| {
+        r.destroy();
+        a.destroy(r);
     }
     a.destroy(rrule);
 }
@@ -130,6 +128,13 @@ export fn destroyRuleResult(result: *Result) void {
 test "new string" {
     const res = commonFeatures("abc");
     defer destroyStr(res.features);
+}
+
+test "destroyRule frees a successful rule" {
+    const rr = createRule("[+voice -syllabic]>[-voice]");
+    defer destroyRule(rr);
+    try std.testing.expect(!rr.is_error);
+    try std.testing.expect(rr.rule != null);
 }
 
 test "version" {
