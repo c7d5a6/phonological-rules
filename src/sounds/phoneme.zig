@@ -27,18 +27,22 @@ pub const Phoneme = struct {
     }
 
     pub fn setSoundWithDiacritic(ph: *Self, sound: []const u8, diacritic: []const u8) void {
+        assert(sound.len > 0);
+        assert(diacritic.len > 0);
         if (ph.orig) |orig| {
+            assert(orig.len <= sound.len);
             assert(std.mem.eql(u8, orig, sound[0..orig.len]));
         }
         ph.orig = sound;
         for (diacritics) |d| {
-            if (d.orig.?.len == diacritic.len and std.mem.eql(u8, d.orig.?, diacritic)) {
+            const orig = d.orig.?;
+            if (orig.len == diacritic.len and std.mem.eql(u8, orig, diacritic)) {
                 ph.ftrs = ph.ftrs.applyChange(d.ftrs);
                 return;
             }
         }
-        ph.unknw = true;
-        ph.ftrs = PhFeatures{};
+        assert(false);
+        unreachable;
     }
 
     pub fn copy(ph: Self) Self {
@@ -80,6 +84,18 @@ pub const diacritics: [consts.diacriticTable.len]Phoneme = d_res: {
 
 const testing = @import("std").testing;
 const expect = testing.expect;
+
+test "known diacritic keeps base features" {
+    var ph = Phoneme{ .ftrs = PhFeatures{} };
+    ph.setPhSound("t");
+    try expect(!ph.unknw);
+    const before = ph.ftrs;
+    ph.setSoundWithDiacritic("tʰ", "ʰ");
+    try expect(!ph.unknw);
+    try expect(!before.eql(ph.ftrs));
+    try expect(!ph.ftrs.eql(PhFeatures{}));
+    try std.testing.expectEqualStrings("tʰ", ph.orig.?);
+}
 
 test "consts" {
     print("Number of constants symbols are {d} with size {d}\n", .{ phonemes.len, @sizeOf(Phoneme) * phonemes.len });

@@ -24,6 +24,8 @@ High design, after the high bugs: (11) skipped HTTP stays FFI as example client/
 
 Test gaps: (14) done FFI create/apply/destroy pairing.
 
+Medium bugs: (15) done unknown diacritic asserts known mark.
+
 ```text
 ❌ BAD: fix destroyRule and the apply leak in one patch
 ✅ GOOD: ask → approve → one commit → ask about the next finding
