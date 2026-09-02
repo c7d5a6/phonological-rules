@@ -20,7 +20,7 @@ Critical: (1–4) done — destroyRule, applyRule leak, shared extern Result typ
 
 High bugs: (5) done A* indices (6) done HTTP UTF-8 400 (7) skipped empty common-features (8) done equal match/change length (9) done affricates via readPhoneme (10) done phoneme change substitutes and keeps the glyph.
 
-High design, after the high bugs: (11) skipped HTTP stays FFI as example client/e2e (12) done `Rule.init` takes an allocator (13) SPE context `/ C _ D`.
+High design, after the high bugs: (11) skipped HTTP stays FFI as example client/e2e (12) done `Rule.init` takes an allocator (13) skipped SPE context `/ C _ D`.
 
 ```text
 ❌ BAD: fix destroyRule and the apply leak in one patch
