@@ -21,6 +21,7 @@ var DAlloc = std.heap.DebugAllocator(.{}){};
 const RuleError = error{
     NoMatcherSet,
     NoChangeSet,
+    MatchChangeLengthMismatch,
 };
 
 pub const Rule = struct {
@@ -55,6 +56,11 @@ pub const Rule = struct {
         var changer = ChangeLexer.init(change_rule);
         while (try changer.nextToken()) |t| {
             try change.append(a, t);
+        }
+        if (match.items.len != change.items.len) {
+            match.deinit(a);
+            change.deinit(a);
+            return error.MatchChangeLengthMismatch;
         }
 
         return Self{
@@ -122,6 +128,17 @@ pub const Rule = struct {
         return newsound;
     }
 };
+
+test "init rejects mismatched match and change lengths" {
+    try std.testing.expectError(
+        error.MatchChangeLengthMismatch,
+        Rule.init("[+voice]>[-voice][]"),
+    );
+    try std.testing.expectError(
+        error.MatchChangeLengthMismatch,
+        Rule.init("[+voice][-voice]>[-voice]"),
+    );
+}
 
 test "rule struct size" {
     // Prints the size of an empty struct
