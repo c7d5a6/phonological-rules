@@ -6,9 +6,10 @@ const isWhitespace = utilS.isWhitespace;
 const isDiacritics = utilS.isDiacritics;
 const eq = utilF.eq;
 const ftr_names = @import("../sounds/features.zig").features;
-const Phoneme = @import("../sounds/phoneme.zig").Phoneme;
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const LexerError = @import("lexer_errors.zig").LexerError;
+const readPhoneme = @import("phoneme_read.zig").readPhoneme;
+const SoundLexer = @import("sound_lexer.zig").SoundLexer;
 
 const PatternTokenType = enum {
     Whitespace,
@@ -97,13 +98,7 @@ pub const MatchLexer = struct {
             return PatternToken{ .type = .TransitionToChangeSet };
         }
 
-        var ph = Phoneme{ .ftrs = PhFeatures{} };
-        ph.setPhSound(slice);
-        while (isDiacritics(iter.peek(1))) {
-            const d_slice = iter.nextCodepointSlice().?;
-            ph.setSoundWithDiacritic(iter.bytes[start..iter.i], d_slice);
-        }
-
+        const ph = try readPhoneme(iter, start, slice);
         return PatternToken{ .type = .Mask, .mask = ph.ftrs };
     }
 };
@@ -119,4 +114,15 @@ test "Parse features" {
     m.addFtr(.voice);
     m.removeFtr(.flap);
     try std.testing.expectEqual(mask.?.mask, m);
+}
+
+test "affricate is one mask token" {
+    var lexer = MatchLexer.init("t͡ʃ");
+    const mask = try lexer.nextToken();
+    try std.testing.expectEqual(mask.?.type, PatternTokenType.Mask);
+    try std.testing.expectEqual(try lexer.nextToken(), null);
+
+    var sounds = SoundLexer.init("t͡ʃ");
+    const st = try sounds.nextToken() orelse unreachable;
+    try std.testing.expectEqual(st.ph.?.ftrs, mask.?.mask.?);
 }

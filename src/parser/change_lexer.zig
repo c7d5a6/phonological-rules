@@ -6,9 +6,9 @@ const isWhitespace = utilS.isWhitespace;
 const isDiacritics = utilS.isDiacritics;
 const eq = utilF.eq;
 const ftr_names = @import("../sounds/features.zig").features;
-const Phoneme = @import("../sounds/phoneme.zig").Phoneme;
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const LexerError = @import("lexer_errors.zig").LexerError;
+const readPhoneme = @import("phoneme_read.zig").readPhoneme;
 
 const ChangeTokenType = enum {
     Whitespace,
@@ -91,13 +91,7 @@ pub const ChangeLexer = struct {
             return pattern;
         }
 
-        var ph = Phoneme{ .ftrs = PhFeatures{} };
-        ph.setPhSound(slice);
-        while (isDiacritics(iter.peek(1))) {
-            const d_slice = iter.nextCodepointSlice().?;
-            ph.setSoundWithDiacritic(iter.bytes[start..iter.i], d_slice);
-        }
-
+        const ph = try readPhoneme(iter, start, slice);
         return ChangeToken{ .type = .Mask, .mask = ph.ftrs };
     }
 };
@@ -113,4 +107,11 @@ test "Parse features" {
     m.addFtr(.voice);
     m.removeFtr(.flap);
     try std.testing.expectEqual(mask.?.mask, m);
+}
+
+test "affricate is one mask token" {
+    var lexer = ChangeLexer.init("t͡ʃ");
+    const mask = try lexer.nextToken();
+    try std.testing.expectEqual(mask.?.type, ChangeTokenType.Mask);
+    try std.testing.expectEqual(try lexer.nextToken(), null);
 }
