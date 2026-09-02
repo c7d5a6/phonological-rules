@@ -1,6 +1,5 @@
 const std = @import("std");
 const assert = std.debug.assert;
-const builtin = @import("builtin");
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const PatternToken = @import("../parser/match_lexer.zig").PatternToken;
 const MatchLexer = @import("../parser/match_lexer.zig").MatchLexer;
@@ -16,8 +15,6 @@ const PTArray = std.ArrayList(PatternToken);
 const CTArray = std.ArrayList(ChangeToken);
 const STArray = std.ArrayList(SoundToken);
 const StrArray = std.ArrayList(u8);
-
-var DAlloc = std.heap.DebugAllocator(.{}){};
 
 const RuleError = error{
     NoMatcherSet,
@@ -39,13 +36,9 @@ pub const Rule = struct {
     change: CTArray,
     // Changeset,
     // Context
-    pub fn init(rule_in: []const u8) !Self {
-        const a = if (builtin.is_test)
-            std.testing.allocator
-        else if (builtin.mode == .Debug)
-            DAlloc.allocator()
-        else
-            std.heap.smp_allocator;
+    /// `a` owns match/change (and glyph copies) until destroy. Apply scratch uses
+    /// an internal arena backed by `a` so it can reuse the same memory.
+    pub fn init(a: std.mem.Allocator, rule_in: []const u8) !Self {
         var match = try PTArray.initCapacity(a, 3);
         var matcher = MatchLexer.init(rule_in);
         var toCS = false;
@@ -85,6 +78,7 @@ pub const Rule = struct {
             }
         }
 
+        assert(match.items.len == change.items.len);
         return Self{
             .a = a,
             .arena = std.heap.ArenaAllocator.init(a),
@@ -162,11 +156,11 @@ pub const Rule = struct {
 test "init rejects mismatched match and change lengths" {
     try std.testing.expectError(
         error.MatchChangeLengthMismatch,
-        Rule.init("[+voice]>[-voice][]"),
+        Rule.init(std.testing.allocator, "[+voice]>[-voice][]"),
     );
     try std.testing.expectError(
         error.MatchChangeLengthMismatch,
-        Rule.init("[+voice][-voice]>[-voice]"),
+        Rule.init(std.testing.allocator, "[+voice][-voice]>[-voice]"),
     );
 }
 

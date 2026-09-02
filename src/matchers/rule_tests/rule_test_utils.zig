@@ -8,7 +8,7 @@ pub const RuleTestCase = struct {
 };
 
 pub fn expectRuleCase(case: RuleTestCase) !void {
-    var rule = try Rule.init(case.rule);
+    var rule = try Rule.init(std.testing.allocator, case.rule);
     defer rule.destroy();
 
     const out = try rule.apply(std.testing.allocator, case.input);

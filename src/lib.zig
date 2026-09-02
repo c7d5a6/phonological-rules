@@ -66,7 +66,7 @@ export fn createRule(input: [*:0]const u8) *ResultRule {
     while (input[len] != 0) : (len += 1) {}
 
     var rr = a.create(ResultRule) catch unreachable;
-    const e_rule = Rule.init(input[0..len]);
+    const e_rule = Rule.init(a, input[0..len]);
 
     if (e_rule) |r| {
         const rule_ptr = a.create(Rule) catch unreachable;
