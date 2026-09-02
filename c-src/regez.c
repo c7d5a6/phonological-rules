@@ -5,5 +5,11 @@ regex_t* alloc_regex_t(void) {
 }
 
 void free_regex_t(regex_t* ptr) {
+  if (ptr == NULL) return;
+  regfree(ptr);
+  free(ptr);
+}
+
+void free_uncompiled_regex_t(regex_t* ptr) {
   free(ptr);
 }

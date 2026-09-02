@@ -10,6 +10,7 @@ pub const Regex = struct {
     pub fn init(pattern: [:0]const u8) !Regex {
         const inner = regez.alloc_regex_t().?;
         if (0 != regez.regcomp(inner, pattern, regez.REG_NEWLINE | regez.REG_EXTENDED)) {
+            regez.free_uncompiled_regex_t(inner);
             return error.compile;
         }
 
@@ -35,6 +36,10 @@ pub const Regex = struct {
     }
 };
 const expect = std.testing.expect;
+
+test "compile failure frees without crashing" {
+    try std.testing.expectError(error.compile, Regex.init("["));
+}
 
 test "create and match path" {
     const pathStr = "/api/hello";
