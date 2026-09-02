@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const builtin = @import("builtin");
 const PhFeatures = @import("../sounds/ph_features.zig").PhFeatures;
 const PatternToken = @import("../parser/match_lexer.zig").PatternToken;
@@ -23,6 +24,12 @@ const RuleError = error{
     NoChangeSet,
     MatchChangeLengthMismatch,
 };
+
+fn freeChangeOrigs(a: std.mem.Allocator, items: []const ChangeToken) void {
+    for (items) |ch| {
+        if (ch.orig) |orig| a.free(orig);
+    }
+}
 
 pub const Rule = struct {
     const Self = @This();
@@ -52,7 +59,7 @@ pub const Rule = struct {
         if (!toCS) return error.NoChangeSet;
         var change = try CTArray.initCapacity(a, 3);
         const change_rule = rule_in[matcher.iterator.i..];
-        if(change_rule.len == 0) return error.NoChangeSet;
+        if (change_rule.len == 0) return error.NoChangeSet;
         var changer = ChangeLexer.init(change_rule);
         while (try changer.nextToken()) |t| {
             try change.append(a, t);
@@ -61,6 +68,21 @@ pub const Rule = struct {
             match.deinit(a);
             change.deinit(a);
             return error.MatchChangeLengthMismatch;
+        }
+        var i: usize = 0;
+        while (i < change.items.len) : (i += 1) {
+            const ch = &change.items[i];
+            if (ch.type == .Phoneme) {
+                assert(ch.orig != null);
+                assert(ch.orig.?.len > 0);
+                const src = ch.orig.?;
+                ch.orig = a.dupe(u8, src) catch |err| {
+                    freeChangeOrigs(a, change.items[0..i]);
+                    match.deinit(a);
+                    change.deinit(a);
+                    return err;
+                };
+            }
         }
 
         return Self{
@@ -74,6 +96,7 @@ pub const Rule = struct {
     pub fn destroy(self: *Self) void {
         self.arena.deinit();
         self.match.deinit(self.a);
+        freeChangeOrigs(self.a, self.change.items);
         self.change.deinit(self.a);
     }
 
@@ -114,6 +137,13 @@ pub const Rule = struct {
                             const s = phonemeSound(ph, aa);
                             std.debug.print("\t\tnew s {s}\n", .{s});
                             try result.appendSlice(aa, s);
+                        } else unreachable;
+                    },
+                    .Phoneme => {
+                        assert(ch.orig != null);
+                        assert(ch.orig.?.len > 0);
+                        if (st.type == .Phoneme) {
+                            try result.appendSlice(aa, ch.orig.?);
                         } else unreachable;
                     },
                     else => unreachable,

@@ -18,7 +18,7 @@ When working through phonological-rules review findings:
 
 Critical: (1–4) done — destroyRule, applyRule leak, shared extern Result types, request-scoped regex copy.
 
-High bugs: (5) done A* indices (6) done HTTP UTF-8 400 (7) skipped empty common-features (8) done equal match/change length (9) done affricates via readPhoneme (10) phoneme change is merge not substitute.
+High bugs: (5) done A* indices (6) done HTTP UTF-8 400 (7) skipped empty common-features (8) done equal match/change length (9) done affricates via readPhoneme (10) done phoneme change substitutes and keeps the glyph.
 
 High design, after the high bugs: (11) HTTP must not FFI-call its own Zig (12) `Rule.init` takes an allocator (13) SPE context `/ C _ D`.
 

@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const unicode = std.unicode;
 const utilS = @import("../utils/symbols.zig");
 const utilF = @import("../utils/fn.zig");
@@ -14,6 +15,7 @@ const ChangeTokenType = enum {
     Whitespace,
     End,
     Mask,
+    Phoneme,
 };
 const Mod = enum {
     plus,
@@ -23,6 +25,7 @@ const Mod = enum {
 pub const ChangeToken = struct {
     type: ChangeTokenType,
     mask: ?PhFeatures = null,
+    orig: ?[]const u8 = null,
 };
 
 pub const ChangeLexer = struct {
@@ -92,7 +95,9 @@ pub const ChangeLexer = struct {
         }
 
         const ph = try readPhoneme(iter, start, slice);
-        return ChangeToken{ .type = .Mask, .mask = ph.ftrs };
+        assert(ph.orig != null);
+        assert(ph.orig.?.len > 0);
+        return ChangeToken{ .type = .Phoneme, .mask = ph.ftrs, .orig = ph.orig };
     }
 };
 
@@ -109,9 +114,18 @@ test "Parse features" {
     try std.testing.expectEqual(mask.?.mask, m);
 }
 
-test "affricate is one mask token" {
+test "affricate is one phoneme token" {
     var lexer = ChangeLexer.init("t͡ʃ");
-    const mask = try lexer.nextToken();
-    try std.testing.expectEqual(mask.?.type, ChangeTokenType.Mask);
+    const tok = try lexer.nextToken();
+    try std.testing.expectEqual(tok.?.type, ChangeTokenType.Phoneme);
+    try std.testing.expectEqualStrings("t͡ʃ", tok.?.orig.?);
+    try std.testing.expectEqual(try lexer.nextToken(), null);
+}
+
+test "ipa glyph is a phoneme token not a mask" {
+    var lexer = ChangeLexer.init("b");
+    const tok = try lexer.nextToken();
+    try std.testing.expectEqual(tok.?.type, ChangeTokenType.Phoneme);
+    try std.testing.expectEqualStrings("b", tok.?.orig.?);
     try std.testing.expectEqual(try lexer.nextToken(), null);
 }
