@@ -42,14 +42,14 @@ pub fn on_apply_rule(a: Allocator, r: Request, c: *Context, params: anytype) Con
     defer destroyRule(rrule);
     if (rrule.is_error or rrule.rule == null) {
         std.debug.print("Rule \"{s}\" is error\n", .{rule_str});
-        r.sendError(error.InternalError, null, 401);
+        r.sendError(error.InternalError, null, 400);
         return;
     }
 
     const result = applyRule(str, rrule.rule.?);
     defer destroyRuleResult(result);
     if (result.is_error or result.result == null) {
-        r.sendError(error.InternalError, null, 401);
+        r.sendError(error.InternalError, null, 400);
         return;
     }
 
