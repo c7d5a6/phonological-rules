@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const unicode = std.unicode;
 const util = @import("../utils/symbols.zig");
 const isWhitespace = util.isWhitespace;
@@ -38,8 +39,10 @@ pub const SoundLexer = struct {
         }
 
         const ph = try readPhoneme(&sl.iterator, start, slice);
-
-        return SoundToken{ .text = slice, .type = .Phoneme, .ph = ph };
+        const text = sl.iterator.bytes[start..sl.iterator.i];
+        assert(ph.orig != null);
+        assert(std.mem.eql(u8, ph.orig.?, text));
+        return SoundToken{ .text = text, .type = .Phoneme, .ph = ph };
     }
 };
 
@@ -65,4 +68,12 @@ test "parse diacritic" {
 
     try tst.expectEqual(end, null);
     try tst.expectEqual(symbol.type, .Phoneme);
+    try tst.expectEqualStrings("p͡f", symbol.text);
+}
+
+test "text includes trailing diacritic" {
+    var lexer = SoundLexer.init("tʰ");
+    const symbol: SoundToken = try lexer.nextToken() orelse unreachable;
+    try tst.expectEqual(try lexer.nextToken(), null);
+    try tst.expectEqualStrings("tʰ", symbol.text);
 }

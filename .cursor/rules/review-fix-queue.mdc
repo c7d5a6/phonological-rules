@@ -24,7 +24,7 @@ High design, after the high bugs: (11) skipped HTTP stays FFI as example client/
 
 Test gaps: (14) done FFI create/apply/destroy pairing.
 
-Medium bugs: (15) done unknown diacritic asserts known mark (16) done regfree then free (17) done remove unused pg import (18) done malformed rules return 400.
+Medium bugs: (15) done unknown diacritic asserts known mark (16) done regfree then free (17) done remove unused pg import (18) done malformed rules return 400 (19) done SoundToken.text is the full span.
 
 ```text
 ❌ BAD: fix destroyRule and the apply leak in one patch
