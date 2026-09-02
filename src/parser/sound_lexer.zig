@@ -32,23 +32,21 @@ pub const SoundLexer = struct {
             while (isWhitespace(sl.iterator.peek(1))) {
                 _ = sl.iterator.nextCodepoint();
             }
-            return SoundToken{ .type = .Whitespace, .text = sl.iterator.bytes[start..sl.iterator.i] };
+            return SoundToken{ .type = .Whitespace };
         }
         if (isDiacritics(slice)) {
             return error.WrongPlaceForDiacritic;
         }
 
         const ph = try readPhoneme(&sl.iterator, start, slice);
-        const text = sl.iterator.bytes[start..sl.iterator.i];
         assert(ph.orig != null);
-        assert(std.mem.eql(u8, ph.orig.?, text));
-        return SoundToken{ .text = text, .type = .Phoneme, .ph = ph };
+        assert(ph.orig.?.len >= slice.len);
+        return SoundToken{ .type = .Phoneme, .ph = ph };
     }
 };
 
 pub const SoundToken = struct {
     type: PhonemeTokenType,
-    text: []const u8,
     ph: ?Phoneme = null,
 };
 
@@ -68,12 +66,12 @@ test "parse diacritic" {
 
     try tst.expectEqual(end, null);
     try tst.expectEqual(symbol.type, .Phoneme);
-    try tst.expectEqualStrings("p͡f", symbol.text);
+    try tst.expectEqualStrings("p͡f", symbol.ph.?.orig.?);
 }
 
-test "text includes trailing diacritic" {
+test "orig includes trailing diacritic" {
     var lexer = SoundLexer.init("tʰ");
     const symbol: SoundToken = try lexer.nextToken() orelse unreachable;
     try tst.expectEqual(try lexer.nextToken(), null);
-    try tst.expectEqualStrings("tʰ", symbol.text);
+    try tst.expectEqualStrings("tʰ", symbol.ph.?.orig.?);
 }
