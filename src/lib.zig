@@ -125,14 +125,30 @@ test "destroyRule frees a successful rule" {
     try std.testing.expect(rr.rule != null);
 }
 
-test "applyRule result is freed by destroyRuleResult" {
+test "destroyRule frees a failed create" {
+    const rr = createRule("[+voice]>[-voice][]");
+    defer destroyRule(rr);
+    try std.testing.expect(rr.is_error);
+    try std.testing.expectEqual(null, rr.rule);
+}
+
+test "create apply destroy pairing and reuse" {
     const rr = createRule("[+voice -syllabic][-voice]>[-voice][]");
     defer destroyRule(rr);
+    try std.testing.expect(!rr.is_error);
     try std.testing.expect(rr.rule != null);
-    const result = applyRule("pods", rr.rule.?);
-    defer destroyRuleResult(result);
-    try std.testing.expect(!result.is_error);
-    try std.testing.expect(result.result != null);
+
+    const first = applyRule("pods", rr.rule.?);
+    defer destroyRuleResult(first);
+    try std.testing.expect(!first.is_error);
+    try std.testing.expect(first.result != null);
+    try std.testing.expectEqualStrings("pots", std.mem.span(first.result.?));
+
+    const second = applyRule("riabt͡ʃik", rr.rule.?);
+    defer destroyRuleResult(second);
+    try std.testing.expect(!second.is_error);
+    try std.testing.expect(second.result != null);
+    try std.testing.expectEqualStrings("riapt͡ʃik", std.mem.span(second.result.?));
 }
 
 test "version" {
