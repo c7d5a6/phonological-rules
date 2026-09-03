@@ -1,8 +1,5 @@
 const std = @import("std");
-const regez = @cImport({
-    @cInclude("regex.h");
-    @cInclude("regez.h");
-});
+const regez = @import("regez");
 
 pub const Regex = struct {
     inner: *regez.regex_t,

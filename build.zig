@@ -23,10 +23,19 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .root_source_file = b.path("src/lib.zig"),
     });
+    const regez_c = b.addTranslateC(.{
+        .root_source_file = b.path("c-src/regez_translate.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    regez_c.addIncludePath(b.path("c-src"));
     const backend_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .root_source_file = b.path("src/main.zig"),
+        .imports = &.{
+            .{ .name = "regez", .module = regez_c.createModule() },
+        },
     });
     const regez_module = b.createModule(.{
         .target = target,
