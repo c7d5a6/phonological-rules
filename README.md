@@ -177,6 +177,8 @@ t͡s d͡z t͡ʃ d͡ʒ t͡ɕ d͡ʑ t͡ɬ d͡ɮ ʈ͡ʂ ɖ͡ʐ p͡f b͡v p͡ɸ b͡�
 
 ## Build
 
+Requires **Zig 0.16.0**.
+
 ```sh
 zig build          # library + backend
 zig build test     # unit tests

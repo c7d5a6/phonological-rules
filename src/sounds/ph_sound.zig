@@ -71,8 +71,8 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     }
 
     while (heap.pop()) |itm| {
-        //TODO: prevent transaction to unknown routes a > b 
-        if(visited.items.len > 1000) break;
+        //TODO: prevent transaction to unknown routes a > b
+        if (visited.items.len > 1000) break;
         const edge_idx = visited.items.len;
         visited.append(a, itm) catch unreachable;
         const edge = visited.items[edge_idx];

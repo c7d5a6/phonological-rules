@@ -40,6 +40,11 @@ pub fn build(b: *std.Build) !void {
     const regez_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+    });
+    regez_module.addIncludePath(b.path("c-src"));
+    regez_module.addCSourceFiles(.{
+        .files = &.{"c-src/regez.c"},
     });
 
     // --- Lib Module
@@ -65,16 +70,7 @@ pub fn build(b: *std.Build) !void {
         .name = "phonological-rules-backend",
         .root_module = backend_module,
     });
-    const libC = b.addLibrary(.{
-        .name = "regez",
-        .linkage = .static,
-        .root_module = regez_module
-    });
-    libC.addIncludePath(b.path("c-src"));
-    libC.addCSourceFiles(.{
-        .files = &.{"c-src/regez.c"},
-    });
-    libC.linkLibC();
+    const libC = b.addLibrary(.{ .name = "regez", .linkage = .static, .root_module = regez_module });
     configureArtifact(b, backend, libC);
     // ZAP
     const zap = b.dependency("zap", .{
@@ -83,7 +79,7 @@ pub fn build(b: *std.Build) !void {
     });
     backend.root_module.addImport("zap", zap.module("zap"));
     const facil = zap.artifact("facil.io");
-    backend.linkLibrary(facil);
+    backend.root_module.linkLibrary(facil);
     // Ship facil.io with the backend and make the runtime loader look next to
     // the deployed binary, instead of the build machine's `.zig-cache` path.
     b.installArtifact(facil);
@@ -93,7 +89,7 @@ pub fn build(b: *std.Build) !void {
     backend.root_module.addRPathSpecial("$ORIGIN/libs");
     // PH
     // backend.addLibraryPath(b.path("libs"));
-    backend.linkLibrary(lib_ph);
+    backend.root_module.linkLibrary(lib_ph);
     b.installArtifact(backend);
 
     // --- Steps
@@ -109,7 +105,7 @@ pub fn build(b: *std.Build) !void {
 }
 
 fn configureArtifact(b: *std.Build, artifact: *std.Build.Step.Compile, libC: *std.Build.Step.Compile) void {
-    artifact.linkLibrary(libC);
-    artifact.addIncludePath(b.path("c-src"));
-    artifact.linkLibC();
+    artifact.root_module.linkLibrary(libC);
+    artifact.root_module.addIncludePath(b.path("c-src"));
+    artifact.root_module.link_libc = true;
 }

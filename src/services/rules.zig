@@ -38,7 +38,7 @@ pub fn on_apply_rule(a: Allocator, r: Request, c: *Context, params: anytype) Con
     @memcpy(str[0..str.len], apply_rule.value.str);
 
     const rrule = createRule(rule_str);
-    std.debug.print("Rule \"{s}\" created {any}\n", .{rule_str, rrule});
+    std.debug.print("Rule \"{s}\" created {any}\n", .{ rule_str, rrule });
     defer destroyRule(rrule);
     if (rrule.is_error or rrule.rule == null) {
         std.debug.print("Rule \"{s}\" is error\n", .{rule_str});
