@@ -61,6 +61,13 @@ pub fn build(b: *std.Build) !void {
     // Test
     const lib_unit_tests = b.addTest(.{
         .root_module = lib_module,
+        .test_runner = .{
+            .path = b.path("scripts/test_runner.zig"),
+            .mode = .server,
+        },
+        // Zig 0.16 Debug self-hosted --fuzz has empty coverage PCs and panics
+        // in std.Build.Fuzz.addEntryPoint. LLVM populates the PC table.
+        .use_llvm = true,
     });
     lib_unit_tests.root_module.addOptions("config", options);
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);

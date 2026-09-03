@@ -162,6 +162,7 @@ test {
     _ = @import("ffi_types.zig");
     _ = @import("matchers/rule.zig");
     _ = @import("matchers/rule_tests.zig");
+    _ = @import("matchers/rule_fuzz.zig");
     std.testing.refAllDecls(@This());
     // or refAllDeclsRecursive
 }
