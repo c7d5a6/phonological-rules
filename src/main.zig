@@ -24,56 +24,48 @@ pub const std_options: std.Options = .{
     },
 };
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = if (builtin.mode == .Debug) gpa.allocator() else std.heap.c_allocator;
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
     SharedAllocator.init(allocator);
-    {
-        //
-        // --- Routes
-        //
-        try routes.setup_routes(allocator);
-        defer routes.deinit();
 
-        //
-        // --- Handlers
-        //
-        var controllerHandler = controller.ControllerMiddleWare.init(null, routes.dispatch_routes, allocator);
-        var headerHandler = header.HeaderMiddleWare.init(controllerHandler.getHandler());
+    //
+    // --- Routes
+    //
+    try routes.setup_routes(allocator);
+    defer routes.deinit();
 
-        //
-        // --- Listner with first middleware in line
-        //
-        var listener = try zap.Middleware.Listener(Context).init(
-            .{
-                .port = port,
-                .log = true,
-                .max_clients = 100000, // TODO: setup this number
-                .on_request = null, // must be null
-            },
-            headerHandler.getHandler(),
-            SharedAllocator.getAllocator,
-        );
-        listener.listen() catch |err| {
-            std.log.debug("\nLISTEN ERROR: {any}\n", .{err});
-            return;
-        };
-        std.log.debug("Listening on 0.0.0.0:{d}\n", .{port});
+    //
+    // --- Handlers
+    //
+    var controllerHandler = controller.ControllerMiddleWare.init(null, routes.dispatch_routes, allocator);
+    var headerHandler = header.HeaderMiddleWare.init(controllerHandler.getHandler());
 
-        //
-        // --- Start worker threads
-        //
-        zap.start(.{
-            // if all threads hang, your server will hang
-            .threads = 1,
-            // workers share memory so do not share states if you have multiple workers
-            .workers = 1,
-        });
-    }
+    //
+    // --- Listner with first middleware in line
+    //
+    var listener = try zap.Middleware.Listener(Context).init(
+        .{
+            .port = port,
+            .log = true,
+            .max_clients = 100000, // TODO: setup this number
+            .on_request = null, // must be null
+        },
+        headerHandler.getHandler(),
+        SharedAllocator.getAllocator,
+    );
+    listener.listen() catch |err| {
+        std.log.debug("\nLISTEN ERROR: {any}\n", .{err});
+        return;
+    };
+    std.log.debug("Listening on 0.0.0.0:{d}\n", .{port});
 
-    if (builtin.mode == .Debug) {
-        std.log.debug("\n\nSTOPPED!\n\n", .{});
-        const leaked = gpa.detectLeaks();
-        std.log.debug("Leaks detected: {}\n", .{leaked});
-    }
+    //
+    // --- Start worker threads
+    //
+    zap.start(.{
+        // if all threads hang, your server will hang
+        .threads = 1,
+        // workers share memory so do not share states if you have multiple workers
+        .workers = 1,
+    });
 }
