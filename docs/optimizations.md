@@ -1,8 +1,61 @@
+# Measuring optimizations
+
+Library only: no HTTP. Keep behavior the same: same tokens, same `contain()` matching, same IPA out.
+
+## Profiler
+
+Times parse, match, and apply on a fixed corpus (`scripts/profile.zig`).
+
+```sh
+zig build profile -Doptimize=ReleaseFast
+```
+
+This builds `zig-out/bin/ph_profile` and prints a table:
+
+```
+optimize=ReleaseFast  clock=awake
+corpus     phase           iters    ns/op
+short      sound parse     20000      …
+short      rule parse      20000      …
+short      match           20000      …
+short      apply            2000      …
+astar      apply            2000      …
+```
+
+| Column | Meaning |
+| --- | --- |
+| corpus | `short` (`pods`), `affricate` (`riabt͡ʃik`), `astar` (mask change that drops `orig` and runs A*), `long` (repeated IPA) |
+| phase | `sound parse` is `SoundLexer`; `rule parse` is `Rule.init`; `match` is `find_match`; `apply` is `Rule.apply` (includes `phonemeSound`) |
+| iters | Timed repetitions after a short warmup |
+| ns/op | Wall time (`Io.Clock.awake`) per repetition |
+
+Compare before and after a change on the same machine, same `-Doptimize=ReleaseFast`. The `astar` / `apply` row is the IPA-reconstruction path. `match` is already tiny on these words; do not chase it first.
+
+For a call graph:
+
+```sh
+zig build -Doptimize=ReleaseFast
+perf record --call-graph dwarf ./zig-out/bin/ph_profile
+perf report
+```
+
+## Fuzzer
+
+Corpus smoke tests run with `zig build test`. The long run:
+
+```sh
+zig build test --fuzz
+```
+
+Uses the library tests only (`src/matchers/rule_fuzz.zig`), not HTTP. Zig 0.16 Debug fuzzing uses LLVM and `scripts/test_runner.zig` (stock runner fails to compile in Debug `--fuzz`). Open the printed web UI for runs, unique inputs, and coverage. Coverage is over the whole test binary (std, runner, all unit tests), not the library alone.
+
+---
+
 # Optimization TODO
 
 Suggestions for making match, parse, and change faster. Ranked by likely payoff. Do not start with match: SPE-sized patterns on short words are already cheap.
 
-Measure before and after (`zig build test` plus a small apply/parse bench on a few rules and a longer IPA string). Keep behavior: same tokens, same `contain()` matching, same IPA out.
+Measure before and after with `zig build profile -Doptimize=ReleaseFast`. Keep behavior: same tokens, same `contain()` matching, same IPA out.
 
 ## 1. Change / IPA reconstruction (do first)
 

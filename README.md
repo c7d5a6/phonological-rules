@@ -181,6 +181,10 @@ Requires **Zig 0.16.0**.
 
 ```sh
 zig build          # library + backend
-zig build test     # unit tests
+zig build test     # unit tests (library; includes fuzz corpus once)
+zig build test --fuzz   # long-run library fuzzer (web UI)
+zig build profile -Doptimize=ReleaseFast   # parse / match / apply timings
 zig build run      # HTTP server on port 3003
 ```
+
+See [docs/optimizations.md](docs/optimizations.md) for how to read the profiler table and for `perf`.
