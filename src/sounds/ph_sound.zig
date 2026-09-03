@@ -58,8 +58,8 @@ const VisitedList = std.ArrayList(QueueMember);
 fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     const dest: PhFeatures = ph.ftrs;
 
-    var heap = PriorityQueue.init(a, QueueContext{ .dest = dest });
-    defer heap.deinit();
+    var heap: PriorityQueue = .initContext(.{ .dest = dest });
+    defer heap.deinit(a);
 
     var visited = VisitedList.initCapacity(a, 0) catch unreachable;
     defer visited.deinit(a);
@@ -67,10 +67,10 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
     for (phonemes) |phc| {
         const itm = QueueMember{ .f = phc.ftrs, .cost = 1, .sound = phc.orig orelse unreachable };
         if (phc.ftrs.eql(dest)) return parseSound(&.{}, null, phc.orig orelse unreachable, a);
-        heap.add(itm) catch unreachable;
+        heap.push(a, itm) catch unreachable;
     }
 
-    while (heap.removeOrNull()) |itm| {
+    while (heap.pop()) |itm| {
         //TODO: prevent transaction to unknown routes a > b 
         if(visited.items.len > 1000) break;
         const edge_idx = visited.items.len;
@@ -86,7 +86,7 @@ fn a_star(ph: Phoneme, a: Allocator) [:0]const u8 {
                 if (next.eql(h.f)) continue :d_loop;
             }
             const new = QueueMember{ .f = next, .cost = 1 + edge.cost, .from = edge_idx, .sound = d.orig orelse unreachable };
-            heap.add(new) catch unreachable;
+            heap.push(a, new) catch unreachable;
         }
     }
     return "?";
@@ -154,7 +154,7 @@ const sort_sounds = [_]u8{
 
 const testing = @import("std").testing;
 const memeq = @import("std").mem.eql;
-const GeneralPA = @import("std").heap.GeneralPurposeAllocator;
+const GeneralPA = @import("std").heap.DebugAllocator;
 const expect = testing.expect;
 const PhFeatures = @import("ph_features.zig").PhFeatures;
 const Feature = @import("features.zig").Feature;
@@ -170,8 +170,7 @@ test "find simple sound" {
     print("sound {s}\n", .{sound});
     try expect(memeq(u8, sound, "ɒ"));
     a.free(sound);
-    const leaked = gpa.detectLeaks();
-    try expect(!leaked);
+    try expect(gpa.detectLeaks() == 0);
 }
 
 test "find sound" {
@@ -189,8 +188,7 @@ test "find sound" {
 
     // clean
     a.free(sound);
-    const leaked = gpa.detectLeaks();
-    try expect(!leaked);
+    try expect(gpa.detectLeaks() == 0);
 }
 
 test "n - m̥" {
@@ -208,8 +206,7 @@ test "n - m̥" {
 
     // clean
     a.free(sound);
-    const leaked = gpa.detectLeaks();
-    try expect(!leaked);
+    try expect(gpa.detectLeaks() == 0);
 }
 
 pub fn main() void {

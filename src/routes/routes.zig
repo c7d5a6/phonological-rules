@@ -183,7 +183,7 @@ pub fn dispatch_routes(a: std.mem.Allocator, r: zap.Request, c: *Context) void {
 const expect = std.testing.expect;
 
 test "create and match path" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{
+    var gpa = std.heap.DebugAllocator(.{
         .thread_safe = true,
     }){};
     const allocator = gpa.allocator();
@@ -193,8 +193,8 @@ test "create and match path" {
     const regex: Regex = Regex.init(pathPattern) catch unreachable;
     defer regex.deinit();
     const pathIn = [_]u8{ '/', 'a', 'p', 'i', '/', 'h', 'e', 'l', 'l', 'o', '/', '1', '/', 'f', 'a', 'v', '/', '5', '0', '/' };
-    const t = try regex.matches(std.heap.page_allocator, pathIn[0..19]);
-    const f = try regex.matches(std.heap.page_allocator, pathIn[0..]);
+    const t = try regex.matches(std.testing.allocator, pathIn[0..19]);
+    const f = try regex.matches(std.testing.allocator, pathIn[0..]);
     try expect(t);
     try expect(!f);
 }

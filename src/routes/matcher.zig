@@ -43,6 +43,6 @@ test "create and match path" {
     const regex: Regex = Regex.init(pathStr) catch unreachable;
     defer regex.deinit();
     const pathIn: [10]u8 = .{ '/', 'a', 'p', 'i', '/', 'h', 'e', 'l', 'l', 'o' };
-    const result = try regex.matches(std.heap.page_allocator, pathIn[0..]);
+    const result = try regex.matches(std.testing.allocator, pathIn[0..]);
     try expect(result);
 }
