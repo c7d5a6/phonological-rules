@@ -38,13 +38,15 @@ pub fn on_common_features(a: Allocator, r: Request, c: *Context, params: anytype
     while (res_dis[len_dis] != 0) : (len_dis += 1) {}
     std.debug.print("\n\tRES[{d}]: {any}\n", .{ len_cmn, &res_cmn });
     std.debug.print("\n\tRES[{d}]: {any}\n", .{ len_dis, &res_dis });
-    const json = std.json.Stringify.valueAlloc(
-        a,
+    var out: std.Io.Writer.Allocating = .init(a);
+    defer out.deinit();
+    std.json.Stringify.value(
         F{ .common = res_cmn[0..len_cmn], .distinctive = res_dis[0..len_dis] },
         .{ .escape_unicode = true, .emit_null_optional_fields = false },
+        &out.writer,
     ) catch unreachable;
+    const json = out.written();
     std.debug.print("\n\tJSON: {s}\n", .{json});
-    defer a.free(json);
     r.setContentType(.JSON) catch return;
     r.sendJson(json) catch return;
 }
