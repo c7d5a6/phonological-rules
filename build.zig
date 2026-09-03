@@ -109,6 +109,23 @@ pub fn build(b: *std.Build) !void {
     run_step.dependOn(&run_cmd.step);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
+
+    const profile_mod = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .root_source_file = b.path("scripts/profile.zig"),
+        .imports = &.{
+            .{ .name = "ph", .module = lib_module },
+        },
+    });
+    const profile_exe = b.addExecutable(.{
+        .name = "ph_profile",
+        .root_module = profile_mod,
+    });
+    b.installArtifact(profile_exe);
+    const profile_run = b.addRunArtifact(profile_exe);
+    const profile_step = b.step("profile", "Time library parse, match, and apply");
+    profile_step.dependOn(&profile_run.step);
 }
 
 fn configureArtifact(b: *std.Build, artifact: *std.Build.Step.Compile, libC: *std.Build.Step.Compile) void {
