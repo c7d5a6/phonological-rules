@@ -167,7 +167,6 @@ test "find simple sound" {
     const ph = Phoneme{ .ftrs = PhFeatures{ .plsMsk = 68440605, .mnsMsk = 453741762 } };
     const sound = phonemeSound(ph, a);
 
-    print("sound {s}\n", .{sound});
     try expect(memeq(u8, sound, "ɒ"));
     a.free(sound);
     try expect(gpa.detectLeaks() == 0);
@@ -183,7 +182,6 @@ test "find sound" {
     ph.ftrs.addFtr(Feature.spread_glottis);
 
     const sound = phonemeSound(ph, a);
-    print("sound {s}\n", .{sound});
     try expect(memeq(u8, sound, "nʰ̥"));
 
     // clean
@@ -201,7 +199,6 @@ test "n - m̥" {
     ph.ftrs.addFtr(Feature.labial);
 
     const sound = phonemeSound(ph, a);
-    print("sound {s}\n", .{sound});
     try expect(memeq(u8, sound, "m̥"));
 
     // clean

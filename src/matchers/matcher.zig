@@ -60,7 +60,6 @@ test "find matching" {
 
     // A
     const match = find_match(sounds[0..], 0, pattern[0..]);
-    std.debug.print("Match: {any}\n", .{match});
 
     // A
     //                  input:    aːbʰa
@@ -95,8 +94,5 @@ test "match by features" {
     //
     // A
     const match = find_match(sounds[0..], 0, pattern[0..]);
-    std.debug.print("Match: {any}\n", .{match});
-
-    // A
     try std.testing.expectEqual(match, 2);
 }

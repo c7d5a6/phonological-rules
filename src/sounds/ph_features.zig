@@ -183,7 +183,7 @@ test "comonFeatures" {
     var out = try commonFeatures(std.testing.allocator, "blkszt");
     defer out.deinit(std.testing.allocator);
 
-    std.debug.print("Common Features: {s}\n", .{out.items});
+    try std.testing.expect(out.items.len > 0);
 }
 
 test "distinctiveFeatures" {
@@ -191,19 +191,7 @@ test "distinctiveFeatures" {
     const result2 = try distinctiveFeatures_("pt");
     const result3 = try distinctiveFeatures_("ptd");
 
-    var i: u64 = 0;
-    while (i < features.len) {
-        const f: Feature = @enumFromInt(i);
-        if (result1.hasP(f) or result2.hasP(f) or result3.hasP(f)) {
-            std.debug.print("Distinctive feature +{s}: {any} {any} {any}\n", .{ @tagName(f), result1.hasP(f), result2.hasP(f), result3.hasP(f) });
-        }
-        if (result1.hasM(f) or result2.hasM(f) or result3.hasM(f)) {
-            std.debug.print("Distinctive feature -{s}: {any} {any} {any}\n", .{ @tagName(f), result1.hasM(f), result2.hasM(f), result3.hasM(f) });
-        }
-        i += 1;
-    }
-
-    std.debug.print("Distinctive Features: {any}\n", .{result1});
-    std.debug.print("Distinctive Features: {any}\n", .{result2});
-    std.debug.print("Distinctive Features: {any}\n", .{result3});
+    try std.testing.expect(result1.plsMsk != 0 or result1.mnsMsk != 0);
+    try std.testing.expect(result2.plsMsk != 0 or result2.mnsMsk != 0);
+    try std.testing.expect(result3.plsMsk != 0 or result3.mnsMsk != 0);
 }

@@ -127,9 +127,7 @@ pub const Rule = struct {
                     .Mask => {
                         if (st.type == .Phoneme) {
                             const ph = st.ph.?.applyChanges(ch.mask.?);
-                            std.debug.print("\t\tnew ph {any}\n", .{ph});
                             const s = phonemeSound(ph, aa);
-                            std.debug.print("\t\tnew s {s}\n", .{s});
                             try result.appendSlice(aa, s);
                         } else unreachable;
                     },
@@ -165,7 +163,6 @@ test "init rejects mismatched match and change lengths" {
 }
 
 test "rule struct size" {
-    // Prints the size of an empty struct
-    std.debug.print("Rule struct size {any}\n", .{@sizeOf(Rule)});
-    std.debug.print("Rule PTARRAY size {any}\n", .{@sizeOf(PTArray)});
+    try std.testing.expect(@sizeOf(Rule) > 0);
+    try std.testing.expect(@sizeOf(PTArray) > 0);
 }

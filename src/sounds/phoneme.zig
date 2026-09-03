@@ -1,5 +1,4 @@
 const std = @import("std");
-const print = std.debug.print;
 const assert = std.debug.assert;
 const Allocator = std.mem.Allocator;
 const Feature = @import("features.zig").Feature;
@@ -98,13 +97,9 @@ test "known diacritic keeps base features" {
 }
 
 test "consts" {
-    print("Number of constants symbols are {d} with size {d}\n", .{ phonemes.len, @sizeOf(Phoneme) * phonemes.len });
-    print("{any}\n", .{phonemes[0]});
     for (phonemes) |ph| {
         try expect(ph.ftrs.plsMsk & ph.ftrs.mnsMsk == 0);
     }
-    print("Number of constants diacritics are {d} with size {d}\n", .{ diacritics.len, @sizeOf(Phoneme) * diacritics.len });
-    print("{any}\n", .{diacritics[0]});
     for (diacritics) |ph| {
         try expect(ph.ftrs.plsMsk & ph.ftrs.mnsMsk == 0);
     }

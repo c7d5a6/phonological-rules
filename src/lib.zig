@@ -8,11 +8,13 @@ const StrArray = @import("sounds/ph_features.zig").StrArray;
 const ResultRule = @import("ffi_types.zig").ResultRule;
 const Result = @import("ffi_types.zig").Result;
 
-var gpa = std.heap.DebugAllocator(.{}){};
+var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
 const a: std.mem.Allocator = if (builtin.is_test)
     std.testing.allocator
-else
-    gpa.allocator();
+else switch (builtin.mode) {
+    .Debug => debug_allocator.allocator(),
+    else => std.heap.smp_allocator,
+};
 
 export fn version() [*:0]const u8 {
     const str: [*:0]const u8 = @ptrCast(config.version);
