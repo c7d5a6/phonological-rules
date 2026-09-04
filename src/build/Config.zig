@@ -9,7 +9,7 @@ const GitVersion = @import("GitVersion.zig");
 /// TODO: When Zig 0.14 is released, derive this from build.zig.zon directly.
 /// Until then this MUST match build.zig.zon and should always be the
 /// _next_ version to release.
-const app_version: std.SemanticVersion = .{ .major = 0, .minor = 2, .patch = 0 };
+const app_version: std.SemanticVersion = .{ .major = 0, .minor = 3, .patch = 0 };
 
 version: std.SemanticVersion = .{ .major = 0, .minor = 0, .patch = 0 },
 
@@ -45,14 +45,14 @@ pub fn init(b: *std.Build) !Config {
         };
 
         if (vsn.tag) |tag| {
-            const expected = b.fmt("v{d}.{d}.{d}", .{
+            const dotted = b.fmt("{d}.{d}.{d}", .{
                 app_version.major,
                 app_version.minor,
                 app_version.patch,
             });
-
-            if (!std.mem.eql(u8, tag, expected)) {
-                @panic("tagged releases must be in vX.Y.Z format matching build.zig");
+            const expected_v = b.fmt("v{s}", .{dotted});
+            if (!std.mem.eql(u8, tag, dotted) and !std.mem.eql(u8, tag, expected_v)) {
+                @panic("tagged releases must be X.Y.Z or vX.Y.Z matching Config.zig app_version");
             }
 
             break :version .{
@@ -65,10 +65,24 @@ pub fn init(b: *std.Build) !Config {
             .major = app_version.major,
             .minor = app_version.minor,
             .patch = app_version.patch,
-            .pre = vsn.branch,
+            .pre = sanitizePre(b, vsn.branch, vsn.changes),
             .build = vsn.short_hash,
         };
     };
 
     return config;
+}
+
+/// Semver pre-release identifiers may only use [0-9A-Za-z-].
+fn sanitizePre(b: *std.Build, branch: []const u8, dirty: bool) []const u8 {
+    const suffix: []const u8 = if (dirty) ".dirty" else "";
+    const out = b.allocator.alloc(u8, branch.len + suffix.len) catch @panic("OOM");
+    for (branch, 0..) |ch, i| {
+        out[i] = switch (ch) {
+            'A'...'Z', 'a'...'z', '0'...'9', '-' => ch,
+            else => '-',
+        };
+    }
+    if (suffix.len > 0) @memcpy(out[branch.len..], suffix);
+    return out;
 }

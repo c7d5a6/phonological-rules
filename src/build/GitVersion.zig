@@ -22,7 +22,7 @@ pub fn detect(b: *std.Build) !Version {
     const branch: []const u8 = b.runAllowFail(
         &[_][]const u8{ "git", "-C", b.build_root.path orelse ".", "rev-parse", "--abbrev-ref", "HEAD" },
         &code,
-        .Ignore,
+        .ignore,
     ) catch |err| switch (err) {
         error.FileNotFound => return error.GitNotFound,
         error.ExitCodeFailure => return error.GitNotRepository,
@@ -33,19 +33,19 @@ pub fn detect(b: *std.Build) !Version {
         const output = b.runAllowFail(
             &[_][]const u8{ "git", "-C", b.build_root.path orelse ".", "log", "--pretty=format:%h", "-n", "1" },
             &code,
-            .Ignore,
+            .ignore,
         ) catch |err| switch (err) {
             error.FileNotFound => return error.GitNotFound,
             else => return err,
         };
 
-        break :short_hash std.mem.trimRight(u8, output, "\r\n ");
+        break :short_hash std.mem.trimEnd(u8, output, "\r\n ");
     };
 
     const tag = b.runAllowFail(
         &[_][]const u8{ "git", "-C", b.build_root.path orelse ".", "describe", "--exact-match", "--tags" },
         &code,
-        .Ignore,
+        .ignore,
     ) catch |err| switch (err) {
         error.FileNotFound => return error.GitNotFound,
         error.ExitCodeFailure => "", // expected
@@ -59,7 +59,7 @@ pub fn detect(b: *std.Build) !Version {
         "diff",
         "--quiet",
         "--exit-code",
-    }, &code, .Ignore) catch |err| switch (err) {
+    }, &code, .ignore) catch |err| switch (err) {
         error.FileNotFound => return error.GitNotFound,
         error.ExitCodeFailure => {}, // expected
         else => return err,
@@ -69,7 +69,7 @@ pub fn detect(b: *std.Build) !Version {
     return .{
         .short_hash = short_hash,
         .changes = changes,
-        .tag = if (tag.len > 0) std.mem.trimRight(u8, tag, "\r\n ") else null,
-        .branch = std.mem.trimRight(u8, branch, "\r\n "),
+        .tag = if (tag.len > 0) std.mem.trimEnd(u8, tag, "\r\n ") else null,
+        .branch = std.mem.trimEnd(u8, branch, "\r\n "),
     };
 }

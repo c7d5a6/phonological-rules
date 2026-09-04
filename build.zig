@@ -1,13 +1,15 @@
 const std = @import("std");
-
-const lib_version: std.SemanticVersion = .{ .major = 0, .minor = 1, .patch = 0 };
+const Config = @import("src/build/Config.zig");
 
 pub fn build(b: *std.Build) !void {
-    // --- Version
-    const opt_version_string = b.option([]const u8, "version-string", "Override Lib version string. Default is to find out with git.");
-    const version_slice = if (opt_version_string) |version| version else "0.1.0";
-    const version = try b.allocator.dupeZ(u8, version_slice);
-    const semver = try std.SemanticVersion.parse(version);
+    // --- Version (git tag / branch+hash, or -Dversion-string=)
+    const cfg = try Config.init(b);
+    const version = try b.allocator.dupeZ(u8, b.fmt("{f}", .{cfg.version}));
+    const lib_semver: std.SemanticVersion = .{
+        .major = cfg.version.major,
+        .minor = cfg.version.minor,
+        .patch = cfg.version.patch,
+    };
 
     // --- Options
     const options = b.addOptions();
@@ -52,7 +54,7 @@ pub fn build(b: *std.Build) !void {
         .name = "ph_lib",
         .root_module = lib_module,
         .linkage = .dynamic,
-        .version = semver,
+        .version = lib_semver,
     });
     lib_ph.root_module.addOptions("config", options);
     // lib_ph.linkLibC();

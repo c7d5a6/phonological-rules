@@ -5,3 +5,4 @@ zig-pkg/
 libs/
 
 phonological-rules-backend
+perf.data
