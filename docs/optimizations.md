@@ -7,13 +7,13 @@ Library only: no HTTP. Keep behavior the same: same tokens, same `contain()` mat
 Times parse, match, and apply on a fixed corpus (`scripts/profile.zig`).
 
 ```sh
-zig build profile -Doptimize=ReleaseFast
+zig build profile -Doptimize=fast
 ```
 
 This builds `zig-out/bin/ph_profile` and prints a table:
 
 ```
-optimize=ReleaseFast  clock=awake
+optimize=fast  clock=awake
 corpus     phase           iters    ns/op
 short      sound parse     20000      …
 short      rule parse      20000      …
@@ -29,12 +29,12 @@ astar      apply            2000      …
 | iters | Timed repetitions after a short warmup |
 | ns/op | Wall time (`Io.Clock.awake`) per repetition |
 
-Compare before and after a change on the same machine, same `-Doptimize=ReleaseFast`. The `astar` / `apply` row is the IPA-reconstruction path. `match` is already tiny on these words; do not chase it first.
+Compare before and after a change on the same machine, same `-Doptimize=fast`. The `astar` / `apply` row is the IPA-reconstruction path. `match` is already tiny on these words; do not chase it first.
 
 For a call graph:
 
 ```sh
-zig build -Doptimize=ReleaseFast
+zig build -Doptimize=fast
 perf record --call-graph dwarf ./zig-out/bin/ph_profile
 perf report
 ```
@@ -47,7 +47,7 @@ Corpus smoke tests run with `zig build test`. The long run:
 zig build test --fuzz
 ```
 
-Uses the library tests only (`src/matchers/rule_fuzz.zig`), not HTTP. Zig 0.16 Debug fuzzing uses LLVM and `scripts/test_runner.zig` (stock runner fails to compile in Debug `--fuzz`). Open the printed web UI for runs, unique inputs, and coverage. Coverage is over the whole test binary (std, runner, all unit tests), not the library alone.
+Uses the library tests only (`src/matchers/rule_fuzz.zig`), not HTTP. Debug fuzzing uses LLVM (`use_llvm = true` on the test artifact). Open the printed web UI for runs, unique inputs, and coverage. Coverage is over the whole test binary (std, runner, all unit tests), not the library alone.
 
 ---
 
@@ -55,7 +55,7 @@ Uses the library tests only (`src/matchers/rule_fuzz.zig`), not HTTP. Zig 0.16 D
 
 Suggestions for making match, parse, and change faster. Ranked by likely payoff. Do not start with match: SPE-sized patterns on short words are already cheap.
 
-Measure before and after with `zig build profile -Doptimize=ReleaseFast`. Keep behavior: same tokens, same `contain()` matching, same IPA out.
+Measure before and after with `zig build profile -Doptimize=fast`. Keep behavior: same tokens, same `contain()` matching, same IPA out.
 
 ## 1. Change / IPA reconstruction (do first)
 

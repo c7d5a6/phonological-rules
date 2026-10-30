@@ -177,14 +177,15 @@ t͡s d͡z t͡ʃ d͡ʒ t͡ɕ d͡ʑ t͡ɬ d͡ɮ ʈ͡ʂ ɖ͡ʐ p͡f b͡v p͡ɸ b͡�
 
 ## Build
 
-Requires **Zig 0.16.0**.
+Requires **Zig 0.17.0**.
 
 ```sh
-zig build          # library + backend
+zig build          # library + profiler
 zig build test     # unit tests (library; includes fuzz corpus once)
 zig build test --fuzz   # long-run library fuzzer (web UI)
-zig build profile -Doptimize=ReleaseFast   # parse / match / apply timings
-zig build run      # HTTP server on port 3003
+zig build profile -Doptimize=fast   # parse / match / apply timings
 ```
+
+The HTTP backend (`zig build run -Dservice`, port 3003) is disabled on Zig 0.17: zap is archived and is being replaced by Baz. See [docs/zap-to-baz.md](docs/zap-to-baz.md).
 
 See [docs/optimizations.md](docs/optimizations.md) for how to read the profiler table and for `perf`.

@@ -15,7 +15,7 @@ var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
 const a: std.mem.Allocator = if (builtin.is_test)
     std.testing.allocator
 else switch (builtin.mode) {
-    .Debug => debug_allocator.allocator(),
+    .debug => debug_allocator.allocator(),
     else => std.heap.smp_allocator,
 };
 

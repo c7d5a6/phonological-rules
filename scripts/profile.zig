@@ -18,7 +18,13 @@ const Case = struct {
     rule: []const u8,
 };
 
-const long_input = "tanatanatanatanatana" ** 8;
+const long_input = blk: {
+    const chunk = "tanatanatanatanatana";
+    var buf: [chunk.len * 8]u8 = undefined;
+    for (0..8) |i| @memcpy(buf[i * chunk.len ..][0..chunk.len], chunk);
+    const final = buf;
+    break :blk &final;
+};
 
 const cases = [_]Case{
     .{

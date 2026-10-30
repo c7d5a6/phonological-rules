@@ -39,6 +39,8 @@ pub const Rule = struct {
     /// `a` owns match/change (and glyph copies) until destroy. Apply scratch uses
     /// an internal arena backed by `a` so it can reuse the same memory.
     pub fn init(a: std.mem.Allocator, rule_in: []const u8) !Self {
+        //
+        // Match parsing
         var match = try PTArray.initCapacity(a, 3);
         var matcher = MatchLexer.init(rule_in);
         var toCS = false;
@@ -50,6 +52,8 @@ pub const Rule = struct {
             try match.append(a, t);
         }
         if (!toCS) return error.NoChangeSet;
+        //
+        // Change Set parsing
         var change = try CTArray.initCapacity(a, 3);
         const change_rule = rule_in[matcher.iterator.i..];
         if (change_rule.len == 0) return error.NoChangeSet;

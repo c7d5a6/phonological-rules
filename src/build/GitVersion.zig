@@ -20,7 +20,7 @@ pub fn detect(b: *std.Build) !Version {
     // Execute a bunch of git commands to determine the automatic version.
     var code: u8 = 0;
     const branch: []const u8 = b.runAllowFail(
-        &[_][]const u8{ "git", "-C", b.build_root.path orelse ".", "rev-parse", "--abbrev-ref", "HEAD" },
+        &[_][]const u8{ "git", "-C", b.root.root_dir.path orelse ".", "rev-parse", "--abbrev-ref", "HEAD" },
         &code,
         .ignore,
     ) catch |err| switch (err) {
@@ -31,7 +31,7 @@ pub fn detect(b: *std.Build) !Version {
 
     const short_hash = short_hash: {
         const output = b.runAllowFail(
-            &[_][]const u8{ "git", "-C", b.build_root.path orelse ".", "log", "--pretty=format:%h", "-n", "1" },
+            &[_][]const u8{ "git", "-C", b.root.root_dir.path orelse ".", "log", "--pretty=format:%h", "-n", "1" },
             &code,
             .ignore,
         ) catch |err| switch (err) {
@@ -43,7 +43,7 @@ pub fn detect(b: *std.Build) !Version {
     };
 
     const tag = b.runAllowFail(
-        &[_][]const u8{ "git", "-C", b.build_root.path orelse ".", "describe", "--exact-match", "--tags" },
+        &[_][]const u8{ "git", "-C", b.root.root_dir.path orelse ".", "describe", "--exact-match", "--tags" },
         &code,
         .ignore,
     ) catch |err| switch (err) {
@@ -55,7 +55,7 @@ pub fn detect(b: *std.Build) !Version {
     _ = b.runAllowFail(&[_][]const u8{
         "git",
         "-C",
-        b.build_root.path orelse ".",
+        b.root.root_dir.path orelse ".",
         "diff",
         "--quiet",
         "--exit-code",
