@@ -23,8 +23,6 @@
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
-    // zap was removed: it is archived and does not build on Zig 0.17, and
-    // Zig compiles every available dependency's build.zig. See docs/zap-to-baz.md.
     .dependencies = .{
         .baz = .{
             .url = "git+https://github.com/technologylab-ai/baz#8c8a3edf5363492d6cf7aaba5c535920cd9b5e7e",
