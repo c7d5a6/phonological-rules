@@ -14,13 +14,11 @@ pub fn build(b: *std.Build) !void {
     // --- Options
     const options = b.addOptions();
     options.addOption([:0]const u8, "version", version);
-    // The zap-based service does not build on Zig 0.17 (zap is archived and
-    // removed from build.zig.zon). See docs/zap-to-baz.md.
     const build_service = b.option(
         bool,
         "service",
-        "Build the zap HTTP service (not yet Zig 0.17 compatible, see docs/zap-to-baz.md)",
-    ) orelse false;
+        "Build the Baz HTTP service (-Dservice=false for library only; Baz needs exactly Zig 0.17.0)",
+    ) orelse true;
 
     // --- Build
     const target = b.standardTargetOptions(.{});
@@ -84,29 +82,16 @@ fn buildService(
     optimize: std.lang.Optimize,
     lib_ph: *std.Build.Step.Compile,
 ) !void {
-    // --- Modules
-    const regez_c = b.addTranslateC(.{
-        .root_source_file = b.path("c-src/regez_translate.h"),
-        .target = target,
-        .optimize = optimize,
-    });
-    regez_c.addIncludePath(b.path("c-src"));
+    const baz = b.dependency("baz", .{ .target = target, .optimize = optimize });
     const backend_module = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .root_source_file = b.path("src/main.zig"),
-        .imports = &.{
-            .{ .name = "regez", .module = regez_c.createModule() },
-        },
-    });
-    const regez_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
+        // Baz itself needs no libc, but the shared ph_lib loads against it.
         .link_libc = true,
-    });
-    regez_module.addIncludePath(b.path("c-src"));
-    regez_module.addCSourceFiles(.{
-        .files = &.{"c-src/regez.c"},
+        .imports = &.{
+            .{ .name = "baz", .module = baz.module("baz") },
+        },
     });
 
     // --- Backend Module
@@ -114,26 +99,10 @@ fn buildService(
         .name = "phonological-rules-backend",
         .root_module = backend_module,
     });
-    const libC = b.addLibrary(.{ .name = "regez", .linkage = .static, .root_module = regez_module });
-    configureArtifact(b, backend, libC);
-    // ZAP
-    // Fails with "no dependency named 'zap'" until zap/Baz is back in build.zig.zon.
-    const zap = try b.dependencyLazy("zap", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    backend.root_module.addImport("zap", zap.module("zap"));
-    const facil = zap.artifact("facil.io");
-    backend.root_module.linkLibrary(facil);
-    // Ship facil.io with the backend and make the runtime loader look next to
-    // the deployed binary, instead of the build machine's `.zig-cache` path.
-    b.installArtifact(facil);
-    // Support both local `zig-out/bin` execution (`../lib`) and your deployed
-    // layout (`./libs`).
+    // PH
+    // Keep the shared lib reachable next to the binary (`zig-out/lib`, `./libs`).
     backend.root_module.addRPathSpecial("$ORIGIN/../lib");
     backend.root_module.addRPathSpecial("$ORIGIN/libs");
-    // PH
-    // backend.addLibraryPath(b.path("libs"));
     backend.root_module.linkLibrary(lib_ph);
     b.installArtifact(backend);
 
@@ -143,10 +112,9 @@ fn buildService(
     run_cmd.addPassthruArgs();
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
-}
 
-fn configureArtifact(b: *std.Build, artifact: *std.Build.Step.Compile, libC: *std.Build.Step.Compile) void {
-    artifact.root_module.linkLibrary(libC);
-    artifact.root_module.addIncludePath(b.path("c-src"));
-    artifact.root_module.link_libc = true;
+    // Service-side unit tests (route params)
+    const service_tests = b.addTest(.{ .root_module = backend_module });
+    const service_test_step = b.step("test-service", "Run HTTP service unit tests");
+    service_test_step.dependOn(&b.addRunArtifact(service_tests).step);
 }

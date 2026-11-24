@@ -1,32 +1,13 @@
 const std = @import("std");
+const web = @import("baz");
 
-pub const Context = struct {
-    session: ?Session = null,
-};
-// note: it MUST have all default values!!!
-// This is so that it can be constructed via .{}
-// as we can't expect the listener to know how to initialize our context structs
-// Just some arbitrary struct we want in the per-request context
-// note: it MUST have all default values!!!
-pub const Session = struct {
-    info: []const u8 = undefined,
-    token: []const u8 = undefined,
+/// App-wide state, borrowed by every request as `ctx.shared`.
+pub const Shared = struct {
+    allocator: std.mem.Allocator,
 };
 
-// just a way to share our allocator via callback
-pub const SharedAllocator = struct {
-    // static
-    var allocator: std.mem.Allocator = undefined;
+/// Per-request state, available as `ctx.locals`. All fields need defaults.
+pub const Locals = struct {};
 
-    const Self = @This();
-
-    // just a convenience function
-    pub fn init(a: std.mem.Allocator) void {
-        allocator = a;
-    }
-
-    // static function we can pass to the listener later
-    pub fn getAllocator() std.mem.Allocator {
-        return allocator;
-    }
-};
+pub const Application = web.AppWithLocals(Shared, Locals);
+pub const Context = Application.Context;

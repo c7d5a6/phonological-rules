@@ -186,6 +186,6 @@ zig build test --fuzz   # long-run library fuzzer (web UI)
 zig build profile -Doptimize=fast   # parse / match / apply timings
 ```
 
-The HTTP backend (`zig build run -Dservice`, port 3003) is disabled on Zig 0.17: zap is archived and is being replaced by Baz. See [docs/zap-to-baz.md](docs/zap-to-baz.md).
+The HTTP backend (`zig build run`, port 3003). Use `-Dservice=false` to build the library only.
 
 See [docs/optimizations.md](docs/optimizations.md) for how to read the profiler table and for `perf`.

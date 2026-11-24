@@ -1,36 +1,21 @@
-const std = @import("std");
-const zap = @import("zap");
-const contextLib = @import("context.zig");
-const Context = contextLib.Context;
+const context = @import("context.zig");
+const Application = context.Application;
+const Context = context.Context;
 
-const Handler = zap.Middleware.Handler(Context);
+/// Global middleware: CORS and cache headers on every response.
+/// Baz itself answers `OPTIONS` (with `Allow`) and 404/405.
+pub const middleware: Application.Middleware = .{ .before = before };
 
-pub const HeaderMiddleWare = struct {
-    handler: Handler,
+fn before(ctx: *Context) !Application.Decision {
+    try addHeaders(ctx);
+    return .continue_request;
+}
 
-    const Self = @This();
-
-    pub fn init(other: ?*Handler) Self {
-        return .{
-            .handler = Handler.init(onRequest, other),
-        };
-    }
-
-    // we need the handler as a common interface to chain stuff
-    pub fn getHandler(self: *Self) *Handler {
-        return &self.handler;
-    }
-
-    // note that the first parameter is of type *Handler, not *Self !!!
-    pub fn onRequest(handler: *Handler, r: zap.Request, context: *Context) !bool {
-        r.setHeader("Access-Control-Allow-Origin", "*") catch unreachable;
-        r.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS") catch unreachable;
-        r.setHeader("Access-Control-Allow-Headers", "*") catch unreachable;
-        r.setHeader("Expires", "0") catch unreachable;
-        if (r.methodAsEnum() == .OPTIONS) {
-            r.sendBody("") catch unreachable;
-            return true;
-        }
-        return handler.handleOther(r, context);
-    }
-};
+/// Also called from `on_error`: Baz discards the draft (headers included)
+/// when a handler fails, and browsers hide error bodies without CORS.
+pub fn addHeaders(ctx: *Context) !void {
+    try ctx.response.header("Access-Control-Allow-Origin", "*");
+    try ctx.response.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH, OPTIONS");
+    try ctx.response.header("Access-Control-Allow-Headers", "*");
+    try ctx.response.header("Expires", "0");
+}

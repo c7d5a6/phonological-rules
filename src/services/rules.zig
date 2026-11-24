@@ -1,14 +1,8 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const zap = @import("zap");
-const Request = zap.Request;
 const Context = @import("../middle/context.zig").Context;
-const ControllerError = @import("../routes/router-errors.zig").ControllerError;
 const Rule = @import("../matchers/rule.zig").Rule;
 const ResultRule = @import("../ffi_types.zig").ResultRule;
 const Result = @import("../ffi_types.zig").Result;
-
-extern fn commonFeatures(input: [*:0]const u8) [*:0]const u8;
 
 extern fn createRule(input: [*:0]const u8) *ResultRule;
 extern fn destroyRule(rrule: *ResultRule) void;
@@ -16,45 +10,31 @@ extern fn destroyRule(rrule: *ResultRule) void;
 extern fn applyRule(input: [*:0]const u8, rule: *Rule) *Result;
 extern fn destroyRuleResult(result: *Result) void;
 
-pub fn on_apply_rule(a: Allocator, r: Request, c: *Context, params: anytype) ControllerError!void {
-    _ = params;
-    _ = c;
-    r.parseBody() catch return error.InternalError;
-    const body = r.body orelse return error.InternalError;
+pub fn on_apply_rule(ctx: *Context) !void {
+    var arena = std.heap.ArenaAllocator.init(ctx.shared.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    var body_buf: [16 * 1024]u8 = undefined;
+    const body = try ctx.request.body().copyTo(&body_buf);
 
     const ApplyRule = struct { rule: []const u8, str: []const u8 };
-    const apply_rule = std.json.parseFromSlice(ApplyRule, a, body, .{}) catch return error.InternalError;
-    if (!std.unicode.utf8ValidateSlice(apply_rule.value.rule) or
-        !std.unicode.utf8ValidateSlice(apply_rule.value.str))
+    const apply_rule = std.json.parseFromSliceLeaky(ApplyRule, a, body, .{}) catch return error.InvalidInput;
+    if (!std.unicode.utf8ValidateSlice(apply_rule.rule) or
+        !std.unicode.utf8ValidateSlice(apply_rule.str))
     {
-        r.sendError(error.InvalidUtf8, null, 400);
-        return;
+        return error.InvalidUtf8;
     }
-    const rule_str = a.allocSentinel(u8, apply_rule.value.rule.len, 0) catch unreachable;
-    defer a.free(rule_str);
-    @memcpy(rule_str[0..rule_str.len], apply_rule.value.rule);
-    const str = a.allocSentinel(u8, apply_rule.value.str.len, 0) catch unreachable;
-    defer a.free(str);
-    @memcpy(str[0..str.len], apply_rule.value.str);
+    const rule_str = try a.dupeSentinel(u8, apply_rule.rule, 0);
+    const str = try a.dupeSentinel(u8, apply_rule.str, 0);
 
     const rrule = createRule(rule_str);
-    std.debug.print("Rule \"{s}\" created {any}\n", .{ rule_str, rrule });
     defer destroyRule(rrule);
-    if (rrule.is_error or rrule.rule == null) {
-        std.debug.print("Rule \"{s}\" is error\n", .{rule_str});
-        r.sendError(error.InternalError, null, 400);
-        return;
-    }
+    if (rrule.is_error or rrule.rule == null) return error.InvalidRule;
 
     const result = applyRule(str, rrule.rule.?);
     defer destroyRuleResult(result);
-    if (result.is_error or result.result == null) {
-        r.sendError(error.InternalError, null, 400);
-        return;
-    }
+    if (result.is_error or result.result == null) return error.InvalidInput;
 
-    r.setContentType(.TEXT) catch return;
-    var len: u64 = 0;
-    while (result.result.?[len] != 0) : (len += 1) {}
-    r.sendBody(result.result.?[0..len]) catch return;
+    return ctx.response.text(200, std.mem.span(result.result.?));
 }

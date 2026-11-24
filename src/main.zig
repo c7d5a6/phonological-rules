@@ -1,71 +1,43 @@
 const std = @import("std");
-const zap = @import("zap");
+const web = @import("baz");
 const builtin = @import("builtin");
 const routes = @import("routes/routes.zig");
-const DispatchRoutes = routes.DispatchRoutes;
-const contextLib = @import("middle/context.zig");
-const controller = @import("middle/controller.zig");
+const context = @import("middle/context.zig");
 const header = @import("middle/header.zig");
-const Context = contextLib.Context;
-const Session = contextLib.Session;
-const SharedAllocator = contextLib.SharedAllocator;
-
-const Handler = zap.Middleware.Handler(Context);
+const Application = context.Application;
 
 const port = 3003;
 
 pub const std_options: std.Options = .{
-    // general log level
-    .log_level = if (builtin.mode == .Debug) .info else .err,
+    .log_level = if (builtin.mode == .debug) .info else .err,
     .log_scope_levels = &[_]std.log.ScopeLevel{
-        // log level specific to zap
-        .{ .scope = .zap, .level = if (builtin.mode == .Debug) .info else .warn },
-        .{ .scope = .auth, .level = if (builtin.mode == .Debug) .info else .err },
+        .{ .scope = .auth, .level = if (builtin.mode == .debug) .info else .err },
     },
 };
 
 pub fn main(init: std.process.Init) !void {
-    const allocator = init.gpa;
-    SharedAllocator.init(allocator);
+    var shared: context.Shared = .{ .allocator = init.gpa };
 
-    //
-    // --- Routes
-    //
-    try routes.setup_routes(allocator);
-    defer routes.deinit();
-
-    //
-    // --- Handlers
-    //
-    var controllerHandler = controller.ControllerMiddleWare.init(null, routes.dispatch_routes, allocator);
-    var headerHandler = header.HeaderMiddleWare.init(controllerHandler.getHandler());
-
-    //
-    // --- Listner with first middleware in line
-    //
-    var listener = try zap.Middleware.Listener(Context).init(
-        .{
+    const app = try Application.init(.{
+        .allocator = init.gpa,
+        .io = init.io,
+        .shared = &shared,
+        .server = .{
             .port = port,
-            .log = true,
-            .max_clients = 100000, // TODO: setup this number
-            .on_request = null, // must be null
+            .bind_address = .{ 0, 0, 0, 0 },
+            .connections = 128,
+            .shards = 1,
+            .output_bytes = 96 * 1024,
         },
-        headerHandler.getHandler(),
-        SharedAllocator.getAllocator,
-    );
-    listener.listen() catch |err| {
-        std.log.debug("\nLISTEN ERROR: {any}\n", .{err});
-        return;
-    };
-    std.log.debug("Listening on 0.0.0.0:{d}\n", .{port});
-
-    //
-    // --- Start worker threads
-    //
-    zap.start(.{
-        // if all threads hang, your server will hang
-        .threads = 1,
-        // workers share memory so do not share states if you have multiple workers
-        .workers = 1,
+        // /api/rules/apply returns whole strings; the default 8 KiB is tight.
+        .response = .{ .body_bytes = 32 * 1024 },
+        .middleware = &.{header.middleware},
+        .on_error = routes.on_error,
     });
+    defer app.deinit();
+
+    try routes.register(app);
+    try app.start();
+    std.log.info("Listening on 0.0.0.0:{d}", .{app.port()});
+    try app.run();
 }
