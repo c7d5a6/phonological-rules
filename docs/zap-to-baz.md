@@ -43,9 +43,11 @@ Verified with `zig build run` and curl: `/api/hello`, `/api/version`,
 - Handlers run inline on the event loop (Baz default). Rule application is short;
   switch `.execution` to workers if heavy calls are added.
 
-## Not done (deliberately)
+## Deploy
 
-- `deploy/deploy.sh`, `deploy/run.sh`, `Dockerfile` (still `ZIG_VERSION=0.15.2`,
-  builds expect `libfacil.io.so`). Update after the HTTP service is accepted.
-- `c-src/` (regez C sources) is no longer built, but the `Dockerfile` still
-  `COPY`s it; delete both together when the Dockerfile is updated.
+Now uses the standard owl deploy (`deploy/deploy.sh` + `deploy/deploy.conf`,
+rules in the infra repo's `DEPLOY-RULES.md`). The service reads `PORT` from the
+environment and listens on 127.0.0.1 only (Caddy is the public side). Builds use
+`ReleaseSafe` because Baz rejects ReleaseFast/ReleaseSmall. The old `run.sh`,
+`ecosystem.config.cjs`, `update-demo.sh`, `Dockerfile` and `c-src/` were removed.
+The first `./deploy/deploy.sh init` / deploy has not been run yet.

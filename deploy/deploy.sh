@@ -1,175 +1,181 @@
 #!/usr/bin/env bash
-# Cross-compile the HTTP backend + shared libs and rsync them to foundry,
-# then restart via PM2.
+# Standard deploy for an owl service. This file is IDENTICAL in every project; only deploy.conf differs.
 #
-# Working tree must be clean. Remote logs are never overwritten.
-#
-# Host:  foundry@foundry.owlbeardm.com:/home/foundry/ph-lib
-# Nginx: api-ph.foundry.owlbeardm.com → 127.0.0.1:3003
-#
-# Env overrides:
-#   PH_LIB_DEPLOY_HOST    default foundry@foundry.owlbeardm.com
-#   PH_LIB_DEPLOY_DIR     default /home/foundry/ph-lib
-#   PH_LIB_ZIG_TARGET     default: linux-gnu from remote uname -m + glibc
-#   PH_LIB_OPTIMIZE       default ReleaseFast
-#   PH_LIB_PM2_APP        default ph-lib
-#   PH_LIB_PM2_LEGACY_ID  default 7 (old update-demo.sh process)
+#   ./deploy/deploy.sh init       first time only: server folder, .env, systemd unit, Caddy site
+#   ./deploy/deploy.sh            build -> ship -> switch -> restart -> health check (auto-rollback)
+#   ./deploy/deploy.sh rollback   switch back to the previous release
+#   ./deploy/deploy.sh status     what is running (release, unit state)
+#   ./deploy/deploy.sh logs       follow the service log
+#   ./deploy/deploy.sh build      build only, show what would be shipped (no server needed)
+# Options: --allow-dirty  (deploy with uncommitted changes)
+# Env: DEPLOY_HOST (default foundry@161.35.217.138)
 set -euo pipefail
 
-DEPLOY_HOST="${PH_LIB_DEPLOY_HOST:-foundry@foundry.owlbeardm.com}"
-REMOTE_DIR="${PH_LIB_DEPLOY_DIR:-/home/foundry/ph-lib}"
-APP_NAME="${PH_LIB_PM2_APP:-ph-lib}"
-LEGACY_PM2_ID="${PH_LIB_PM2_LEGACY_ID:-7}"
-OPTIMIZE="${PH_LIB_OPTIMIZE:-ReleaseFast}"
-BIN_NAME="phonological-rules-backend"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$HERE/.." && pwd)}"
+DEPLOY_CONF="${DEPLOY_CONF:-$HERE/deploy.conf}"
+DEPLOY_HOST="${DEPLOY_HOST:-foundry@161.35.217.138}"
 
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
-REPO="$(git -C "$REPO" rev-parse --show-toplevel)"
-cd "$REPO"
+say() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
+die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+remote() { ssh -o BatchMode=yes "$DEPLOY_HOST" "$@"; }
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  echo "error: uncommitted content. Commit or stash before deploying." >&2
-  git status --porcelain >&2
-  exit 1
-fi
-
-for cmd in zig rsync ssh; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "error: $cmd is required." >&2
-    exit 1
-  fi
+CMD=deploy; ALLOW_DIRTY=0
+for a in "$@"; do
+  case "$a" in
+    init|rollback|status|logs|build) CMD=$a ;;
+    --allow-dirty) ALLOW_DIRTY=1 ;;
+    -h|--help) sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) die "unknown argument: $a (try --help)" ;;
+  esac
 done
 
-remote() {
-  ssh "$DEPLOY_HOST" "$@"
-}
+# ---- project settings -------------------------------------------------------
+SHARED=(.env data/)      # state kept between releases (trailing / = directory)
+HEALTH=/healthz          # path that answers 200 when the app is up
+KEEP=5                   # releases kept on the server
+ENV_EXAMPLE=.env.example # template for the server .env (relative to the project root)
+# shellcheck disable=SC1090
+source "$DEPLOY_CONF"
+: "${NAME:?deploy.conf must set NAME}" "${DOMAIN:?deploy.conf must set DOMAIN}" \
+  "${PORT:?deploy.conf must set PORT}" "${START:?deploy.conf must set START}"
+declare -F build > /dev/null || die "deploy.conf must define build()"
 
-echo "==> Probe ${DEPLOY_HOST}"
-REMOTE_UNAME="$(remote uname -m)"
-if [[ -n "${PH_LIB_ZIG_TARGET:-}" ]]; then
-  ZIG_TARGET="$PH_LIB_ZIG_TARGET"
-else
-  case "$REMOTE_UNAME" in
-    x86_64) ZIG_ARCH=x86_64 ;;
-    aarch64|arm64) ZIG_ARCH=aarch64 ;;
-    *)
-      echo "error: unsupported remote arch ${REMOTE_UNAME} (set PH_LIB_ZIG_TARGET)." >&2
-      exit 1
-      ;;
+BASE="\$HOME/$NAME"      # evaluated on the server
+
+detect_server() {
+  ARCH="$(remote uname -m)"
+  GLIBC="$(remote getconf GNU_LIBC_VERSION | awk '{print $2}')"
+}
+set_targets() {
+  case "$ARCH" in
+    x86_64) GOARCH=amd64; ZIG_ARCH=x86_64 ;;
+    aarch64|arm64) GOARCH=arm64; ZIG_ARCH=aarch64 ;;
+    *) die "unsupported server arch: $ARCH" ;;
   esac
-  GLIBC_VER="$(remote getconf GNU_LIBC_VERSION | awk '{print $2}')"
-  if [[ -z "$GLIBC_VER" ]]; then
-    echo "error: could not read remote glibc (set PH_LIB_ZIG_TARGET)." >&2
-    exit 1
-  fi
-  ZIG_TARGET="${ZIG_ARCH}-linux-gnu.${GLIBC_VER}"
-fi
-
-GIT_HEAD="$(git rev-parse --short HEAD)"
-GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-echo "==> Build ${ZIG_TARGET} ${OPTIMIZE} (${GIT_BRANCH} ${GIT_HEAD})"
-
-STAGE="$(mktemp -d)"
-cleanup() { rm -rf "$STAGE"; }
-trap cleanup EXIT
-
-zig build \
-  -Doptimize="$OPTIMIZE" \
-  -Dtarget="$ZIG_TARGET" \
-  --prefix "$STAGE/prefix"
-
-PREFIX="$STAGE/prefix"
-if [[ ! -x "$PREFIX/bin/$BIN_NAME" ]]; then
-  echo "error: missing $PREFIX/bin/$BIN_NAME" >&2
-  exit 1
-fi
-
-mkdir -p "$STAGE/root/libs"
-cp -a "$PREFIX/bin/$BIN_NAME" "$STAGE/root/$BIN_NAME"
-# Shared objects + SONAME symlinks only (skip static .a).
-find "$PREFIX/lib" -maxdepth 1 \( -name '*.so' -o -name '*.so.*' \) -exec cp -a {} "$STAGE/root/libs/" \;
-cp "$REPO/deploy/run.sh" "$STAGE/root/run.sh"
-cp "$REPO/deploy/run.sh" "$STAGE/root/start.sh"
-cp "$REPO/deploy/ecosystem.config.cjs" "$STAGE/root/ecosystem.config.cjs"
-chmod +x "$STAGE/root/$BIN_NAME" "$STAGE/root/run.sh" "$STAGE/root/start.sh"
-
-shopt -s nullglob
-ph_libs=( "$STAGE/root/libs"/libph_lib.so* )
-shopt -u nullglob
-if (( ${#ph_libs[@]} == 0 )); then
-  echo "error: no libph_lib.so* under $PREFIX/lib" >&2
-  ls -la "$PREFIX/lib" >&2 || true
-  exit 1
-fi
-
-echo "==> Ensure remote dirs"
-remote "mkdir -p $(printf '%q' "$REMOTE_DIR/libs") $(printf '%q' "$REMOTE_DIR/logs")"
-
-# Libs first so a crash-restart of the new binary can resolve SONAME.
-echo "==> Rsync libs/ (versioned .so + symlinks)"
-rsync -az --delete --delay-updates "$STAGE/root/libs/" "${DEPLOY_HOST}:${REMOTE_DIR}/libs/"
-
-echo "==> Rsync binary via .next (avoids ETXTBSY on a running executable)"
-rsync -az "$STAGE/root/$BIN_NAME" "${DEPLOY_HOST}:${REMOTE_DIR}/${BIN_NAME}.next"
-remote "mv -f $(printf '%q' "$REMOTE_DIR/${BIN_NAME}.next") $(printf '%q' "$REMOTE_DIR/$BIN_NAME") && chmod +x $(printf '%q' "$REMOTE_DIR/$BIN_NAME")"
-
-echo "==> Rsync run scripts (does not touch logs/)"
-rsync -az \
-  "$STAGE/root/run.sh" \
-  "$STAGE/root/start.sh" \
-  "$STAGE/root/ecosystem.config.cjs" \
-  "${DEPLOY_HOST}:${REMOTE_DIR}/"
-remote "chmod +x $(printf '%q' "$REMOTE_DIR/run.sh") $(printf '%q' "$REMOTE_DIR/start.sh")"
-
-echo "==> PM2 restart ${APP_NAME}"
-remote "REMOTE_DIR=$(printf '%q' "$REMOTE_DIR") APP_NAME=$(printf '%q' "$APP_NAME") LEGACY_PM2_ID=$(printf '%q' "$LEGACY_PM2_ID") bash -s" <<'REMOTE'
-set -euo pipefail
-export PM2_HOME="${PM2_HOME:-$HOME/.pm2}"
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-if [[ -s "$NVM_DIR/nvm.sh" ]]; then
-  # shellcheck disable=SC1091
-  . "$NVM_DIR/nvm.sh"
-fi
-export PATH="${HOME}/.local/bin:/usr/local/bin:${PATH}"
-# Old update-demo.sh used a pinned nvm pm2.
-if [[ -x "${HOME}/.nvm/versions/node/v14.19.2/bin/pm2" ]]; then
-  export PATH="${HOME}/.nvm/versions/node/v14.19.2/bin:${PATH}"
-fi
-if ! command -v pm2 >/dev/null 2>&1; then
-  echo "error: pm2 not found on remote (PATH=${PATH})" >&2
-  exit 1
-fi
-cd "$REMOTE_DIR"
-
-legacy_is_this_app() {
-  pm2 describe "$LEGACY_PM2_ID" >/dev/null 2>&1 || return 1
-  pm2 show "$LEGACY_PM2_ID" | grep -F "$REMOTE_DIR" >/dev/null 2>&1
+  ZIG_TARGET="${ZIG_ARCH}-linux-gnu.${GLIBC}"
+  export GOARCH ZIG_ARCH ZIG_TARGET GLIBC
 }
 
-if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-  pm2 restart "$APP_NAME" --update-env
-elif legacy_is_this_app; then
-  echo "==> Replace PM2 id ${LEGACY_PM2_ID} with named app ${APP_NAME}"
-  pm2 delete "$LEGACY_PM2_ID"
-  pm2 start ecosystem.config.cjs
-  pm2 save
-else
-  pm2 start ecosystem.config.cjs
-  pm2 save
-fi
-pm2 status "$APP_NAME"
-sleep 1
-if command -v curl >/dev/null 2>&1; then
-  curl -sf --max-time 5 http://127.0.0.1:3003/api/version || {
-    echo "error: health check failed" >&2
-    pm2 logs "$APP_NAME" --lines 40 --nostream >&2 || true
-    exit 1
-  }
-  echo
-fi
-REMOTE
+make_stage() { # builds into $STAGE (variables available to build(): OUT GOARCH ZIG_TARGET ...)
+  STAGE="$(mktemp -d)"
+  trap 'rm -rf "$STAGE"' EXIT
+  OUT="$STAGE"; export OUT
+  say "Build $NAME ($ARCH, glibc $GLIBC, rev $GIT_REV)"
+  (cd "$PROJECT_ROOT" && build)
+  # the standard entry point: load .env, put ./libs on the library path, exec the app
+  if [ ! -e "$STAGE/run.sh" ]; then
+    {
+      printf '#!/usr/bin/env bash\n# generated by deploy.sh\nset -euo pipefail\ncd "$(dirname "$0")"\n'
+      printf 'if [[ -f .env ]]; then set -a; . ./.env; set +a; fi\n'
+      printf 'export LD_LIBRARY_PATH="$PWD/libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\n'
+      printf 'exec %s "$@"\n' "$START"
+    } > "$STAGE/run.sh"
+  fi
+  chmod +x "$STAGE/run.sh"
+  printf '%s %s\n' "$GIT_REV" "$(date -u +%FT%TZ)" > "$STAGE/.deployed"
+}
 
-echo
-echo "Done. ${APP_NAME} @ ${DEPLOY_HOST}:${REMOTE_DIR} (http://127.0.0.1:3003)"
-echo "  Public API: https://api-ph.foundry.owlbeardm.com"
-echo "  Version:    GET /api/version  (${GIT_BRANCH} ${GIT_HEAD})"
+GIT_REV="$(git -C "$PROJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+
+case "$CMD" in
+# -----------------------------------------------------------------------------
+build)
+  ARCH="${ARCH:-x86_64}"; GLIBC="${GLIBC:-2.39}"; set_targets
+  make_stage
+  say "Would ship:"; (cd "$STAGE" && find . -maxdepth 2 -not -name . | sort | head -40)
+  ;;
+# -----------------------------------------------------------------------------
+init)
+  say "Prepare $NAME on $DEPLOY_HOST"
+  remote "mkdir -p $BASE/releases $BASE/shared"
+  for s in "${SHARED[@]}"; do
+    [[ $s == */ ]] && remote "mkdir -p $BASE/shared/${s%/}"
+  done
+  if remote "test -e $BASE/shared/.env"; then
+    say "Keep existing shared/.env"
+  elif [ -f "$PROJECT_ROOT/$ENV_EXAMPLE" ]; then
+    scp -q "$PROJECT_ROOT/$ENV_EXAMPLE" "$DEPLOY_HOST:$NAME/shared/.env"
+    remote "chmod 600 $BASE/shared/.env"
+    say "Created shared/.env from $ENV_EXAMPLE. EDIT IT on the server: ~/$NAME/shared/.env"
+  else
+    say "No $ENV_EXAMPLE in the project; create ~/$NAME/shared/.env by hand if the app needs one"
+  fi
+  say "Register systemd unit + Caddy site (needs the one-time server setup)"
+  remote "sudo -n /usr/local/sbin/owl-register '$NAME' '$PORT' '$DOMAIN'"
+  echo
+  echo "Next: point DNS  $DOMAIN  ->  the server IP, fill in ~/$NAME/shared/.env, then run ./deploy/deploy.sh"
+  ;;
+# -----------------------------------------------------------------------------
+deploy)
+  [ -d "$PROJECT_ROOT" ] || die "project root not found: $PROJECT_ROOT"
+  if [ -n "$(git -C "$PROJECT_ROOT" status --porcelain 2> /dev/null)" ] && [ "$ALLOW_DIRTY" = 0 ]; then
+    git -C "$PROJECT_ROOT" status --short >&2
+    die "uncommitted changes (commit them, or use --allow-dirty)"
+  fi
+  say "Probe $DEPLOY_HOST"; detect_server; set_targets
+  make_stage
+  ID="$(date +%Y%m%d-%H%M%S)-$GIT_REV"
+  say "Ship release $ID"
+  remote "mkdir -p $BASE/releases/$ID"
+  rsync -az -e "ssh -o BatchMode=yes" "$STAGE/" "$DEPLOY_HOST:$NAME/releases/$ID/"
+
+  say "Switch, restart, health check"
+  # variables travel as a safely quoted preamble (ssh would re-split plain arguments)
+  {
+    printf 'name=%q id=%q url=%q keep=%q shared=%q\n' "$NAME" "$ID" "http://127.0.0.1:$PORT$HEALTH" "$KEEP" "${SHARED[*]:-}"
+    cat <<'REMOTE'
+set -euo pipefail
+base=$HOME/$name; rel=$base/releases/$id
+# link the shared state into the new release
+for s in $shared; do
+  item=${s%/}
+  if [[ $s == */ ]]; then mkdir -p "$base/shared/$item"
+  elif [ ! -e "$base/shared/$item" ]; then
+    echo "missing $base/shared/$item  (create it, then deploy again)" >&2; rm -rf "$rel"; exit 3
+  fi
+  rm -rf "${rel:?}/$item"; ln -sfn "$base/shared/$item" "$rel/$item"
+done
+prev=$(readlink "$base/current" || true)
+switch() { ln -sfn "$1" "$base/current.new"; mv -Tf "$base/current.new" "$base/current"; }
+switch "releases/$id"
+sudo -n /usr/local/sbin/owl-ctl restart "$name"
+for _ in $(seq 1 20); do
+  sleep 1
+  if systemctl is-active --quiet "owl-$name" && curl -fsS --max-time 3 "$url" > /dev/null 2>&1; then
+    echo "healthy: $url"
+    ls -1dt "$base"/releases/* | tail -n +$((keep + 1)) | xargs -r rm -rf
+    exit 0
+  fi
+done
+echo "NOT healthy after 20s. Log:" >&2
+journalctl -u "owl-$name" -n 40 --no-pager >&2 || true
+if [ -n "$prev" ]; then
+  echo "Rolling back to $prev" >&2
+  switch "$prev"; sudo -n /usr/local/sbin/owl-ctl restart "$name"
+fi
+exit 1
+REMOTE
+  } | remote bash -s
+  say "Deployed $NAME @ $GIT_REV  ->  https://$DOMAIN"
+  ;;
+# -----------------------------------------------------------------------------
+rollback)
+  remote bash -s -- "$NAME" <<'REMOTE'
+set -euo pipefail
+name=$1; base=$HOME/$name
+cur=$(basename "$(readlink "$base/current")")
+prev=$(ls -1t "$base/releases" | grep -vx "$cur" | head -1 || true)
+[ -n "$prev" ] || { echo "no older release to roll back to" >&2; exit 1; }
+ln -sfn "releases/$prev" "$base/current.new"; mv -Tf "$base/current.new" "$base/current"
+sudo -n /usr/local/sbin/owl-ctl restart "$name"
+echo "rolled back: $cur -> $prev"
+REMOTE
+  ;;
+status)
+  remote "echo release: \$(readlink $BASE/current); cat $BASE/current/.deployed 2>/dev/null; sudo -n /usr/local/sbin/owl-ctl status '$NAME'" || true
+  ;;
+logs)
+  exec ssh -t "$DEPLOY_HOST" "journalctl -u owl-$NAME -n 100 -f"
+  ;;
+esac

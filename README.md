@@ -186,6 +186,6 @@ zig build test --fuzz   # long-run library fuzzer (web UI)
 zig build profile -Doptimize=fast   # parse / match / apply timings
 ```
 
-The HTTP backend (`zig build run`, port 3003). Use `-Dservice=false` to build the library only.
+The HTTP backend (`zig build run`, port 3003, or `PORT=...`) is built on [Baz](https://github.com/technologylab-ai/baz), which requires exactly Zig 0.17.0 and rejects ReleaseFast. Use `-Dservice=false` to build the library only. Deploy with `./deploy/deploy.sh` (config in `deploy/deploy.conf`); see [docs/zap-to-baz.md](docs/zap-to-baz.md).
 
 See [docs/optimizations.md](docs/optimizations.md) for how to read the profiler table and for `perf`.
