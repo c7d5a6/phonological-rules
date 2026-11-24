@@ -28,3 +28,27 @@
 | `[+coronal −sonorant]→[+delayed release −anterior +distributed +strident]/_i` | 80 | rule (Kongo Palatalization) |
 | `∅→ɘ/[+strident]_[+strident]]word` | 86 | rule (English Schwa Epenthesis) |
 | `n→[place_i]/_[−syllabic place_i]` | 89 | rule (/n/ Assimilation) |
+
+
+spec things:
+
+mach
+change
+environment
+	pre
+	after
+	
+
+# match
+- V - vowel
+- C - consonant
+- X - any number of segments of any lengh (as *)
+- place_i
+# change
+- ∅ - delete symbol
+# environment
+## pre
+- start of the word (`[word`)
+##after
+- end of the word (`]word`)
+- ]Utterance
